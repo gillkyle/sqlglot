@@ -202,9 +202,9 @@ describe("transpile identity: SELECT basics", () => {
     validateIdentity("SELECT 1 AS count FROM test");
   });
 
-  it.todo(
-    "SELECT test.* FROM test (table.* Dot expression crashes generator)",
-  );
+  it("SELECT test.* FROM test (qualified star)", () => {
+    validateIdentity("SELECT test.* FROM test");
+  });
 
   it("SELECT a AS b FROM test", () => {
     validateIdentity("SELECT a AS b FROM test");
@@ -796,9 +796,9 @@ describe("transpile identity: CTEs (WITH clause)", () => {
     validateIdentity("WITH a AS (SELECT 1) SELECT 1 EXCEPT SELECT 2");
   });
 
-  it.todo(
-    "WITH a AS (SELECT 1) SELECT a.* FROM a (table.* Dot expression crashes generator)",
-  );
+  it("WITH a AS (SELECT 1) SELECT a.* FROM a (qualified star in CTE)", () => {
+    validateIdentity("WITH a AS (SELECT 1) SELECT a.* FROM a");
+  });
 
   it("multiple CTEs", () => {
     validateIdentity(
@@ -1279,4 +1279,88 @@ describe("transpile identity: advanced syntax (unsupported)", () => {
   it.todo("CREATE VIEW / CREATE FUNCTION (not supported)");
   it.todo("RECURSIVE CTE (not supported)");
   it.todo("FETCH FIRST N ROWS (not supported)");
+});
+
+// =============================================================================
+// Kitchen Sink: complex queries combining many SQL features
+// =============================================================================
+
+describe("transpile: kitchen sink queries", () => {
+  it("kitchen sink analytics: CTEs, window functions, CASE, aggregates, subquery", () => {
+    const sql = `WITH monthly_orders AS (SELECT user_id, DATE_TRUNC('month', created_at) AS month, COUNT(*) AS order_count, SUM(total) AS monthly_total, AVG(total) AS avg_order FROM orders WHERE status IN ('completed', 'pending') GROUP BY user_id, DATE_TRUNC('month', created_at) HAVING SUM(total) > 50), user_stats AS (SELECT u.id, u.name, COALESCE(u.email, 'no email') AS email, COUNT(o.id) AS lifetime_orders, COALESCE(SUM(o.total), 0) AS lifetime_spent, MIN(o.created_at) AS first_order, MAX(o.created_at) AS last_order, SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed, SUM(CASE WHEN o.status = 'cancelled' THEN o.total ELSE 0 END) AS lost_revenue FROM users AS u LEFT JOIN orders AS o ON u.id = o.user_id GROUP BY u.id, u.name, u.email), ranked AS (SELECT us.*, RANK() OVER (ORDER BY us.lifetime_spent DESC) AS spend_rank, NTILE(3) OVER (ORDER BY us.lifetime_spent DESC) AS spend_tier FROM user_stats AS us WHERE us.lifetime_orders > 0) SELECT r.name, r.email, r.lifetime_orders, r.lifetime_spent, r.completed, r.lost_revenue, r.spend_rank, CASE r.spend_tier WHEN 1 THEN 'Top' WHEN 2 THEN 'Mid' ELSE 'Low' END AS tier, (SELECT ROUND(AVG(mo.monthly_total), 2) FROM monthly_orders AS mo WHERE mo.user_id = r.id) AS avg_monthly_spend, r.first_order, r.last_order, r.last_order - r.first_order AS customer_tenure FROM ranked AS r ORDER BY r.spend_rank, r.name LIMIT 20`;
+    const result = parseOne(sql).sql();
+    expect(result).toContain("monthly_orders");
+    expect(result).toContain("user_stats");
+    expect(result).toContain("ranked");
+    expect(result).toContain("RANK()");
+    expect(result).toContain("NTILE(3)");
+    expect(result).toContain("COALESCE");
+    expect(result).toContain("us.*");
+    expect(result).toContain("CASE");
+    expect(result).toContain("LIMIT 20");
+  });
+
+  it("kitchen sink cross-dialect: MySQL → Postgres", () => {
+    const sql =
+      "WITH `order_summary` AS (" +
+      "SELECT `o`.`user_id`, COUNT(*) AS `cnt`, SUM(`o`.`total`) AS `sum_total`, " +
+      "MIN(`o`.`total`) AS `min_order`, MAX(`o`.`total`) AS `max_order`, " +
+      "COUNT(DISTINCT `o`.`status`) AS `status_count` " +
+      "FROM `orders` AS `o` " +
+      "WHERE `o`.`created_at` >= '2024-01-01' AND `o`.`status` <> 'cancelled' " +
+      "GROUP BY `o`.`user_id` HAVING SUM(`o`.`total`) > 100" +
+      "), " +
+      "`ranked_users` AS (" +
+      "SELECT `u`.`id`, `u`.`name`, COALESCE(`u`.`email`, 'N/A') AS `email`, " +
+      "`os`.`cnt`, `os`.`sum_total`, `os`.`min_order`, `os`.`max_order`, `os`.`status_count`, " +
+      "ROW_NUMBER() OVER (ORDER BY `os`.`sum_total` DESC) AS `rn`, " +
+      "SUM(`os`.`sum_total`) OVER () AS `grand_total`, " +
+      "ROUND(`os`.`sum_total` * 100.0 / SUM(`os`.`sum_total`) OVER (), 2) AS `pct_of_total`, " +
+      "LAG(`os`.`sum_total`) OVER (ORDER BY `os`.`sum_total` DESC) AS `prev_total`, " +
+      "LEAD(`os`.`sum_total`) OVER (ORDER BY `os`.`sum_total` DESC) AS `next_total` " +
+      "FROM `users` AS `u` " +
+      "INNER JOIN `order_summary` AS `os` ON `u`.`id` = `os`.`user_id` " +
+      "WHERE EXISTS (SELECT 1 FROM `orders` AS `o2` WHERE `o2`.`user_id` = `u`.`id` AND `o2`.`status` = 'completed')" +
+      ") " +
+      "SELECT `rn` AS `rank`, `name`, `email`, `cnt` AS `orders`, " +
+      "`sum_total` AS `total_spent`, `min_order`, `max_order`, `status_count`, " +
+      "CASE WHEN `sum_total` > 500 THEN 'VIP' WHEN `sum_total` > 200 THEN 'Regular' ELSE 'Starter' END AS `tier`, " +
+      "`pct_of_total`, COALESCE(`sum_total` - `prev_total`, 0) AS `gap_from_above`, `grand_total` " +
+      "FROM `ranked_users` ORDER BY `rn` LIMIT 50";
+    const result = transpile(sql, { readDialect: "mysql", writeDialect: "postgres" });
+    expect(result.length).toBe(1);
+    const out = result[0];
+    // Backticks should become double-quotes
+    expect(out).not.toContain("`");
+    expect(out).toContain('"order_summary"');
+    expect(out).toContain('"ranked_users"');
+    // Window functions preserved
+    expect(out).toContain("ROW_NUMBER()");
+    expect(out).toContain("LAG(");
+    expect(out).toContain("LEAD(");
+    expect(out).toContain("OVER");
+    // Aggregates and keywords
+    expect(out).toContain("EXISTS");
+    expect(out).toContain("INNER JOIN");
+    expect(out).toContain("COALESCE");
+    expect(out).toContain("CASE");
+    expect(out).toContain("LIMIT 50");
+  });
+
+  it("qualified star: SELECT t.* FROM t", () => {
+    validateIdentity("SELECT t.* FROM t");
+  });
+
+  it("qualified star with extra columns", () => {
+    validateIdentity("SELECT t.*, t.id, 1 AS x FROM t");
+  });
+
+  it("qualified star in CTE with window function", () => {
+    const sql =
+      "WITH stats AS (SELECT 1 AS x, 2 AS y) " +
+      "SELECT stats.*, RANK() OVER (ORDER BY stats.x DESC) AS rk FROM stats";
+    const result = parseOne(sql).sql();
+    expect(result).toContain("stats.*");
+    expect(result).toContain("RANK()");
+  });
 });

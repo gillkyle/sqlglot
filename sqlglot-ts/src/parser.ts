@@ -1044,8 +1044,22 @@ export class Parser {
   private _parseColumnOps(thisExpr: Expression | null): Expression | null {
     if (!thisExpr) return thisExpr;
 
-    // Handle dot notation: col.field or table.col
+    // Handle dot notation: col.field, table.col, or table.*
     while (this._match(TokenType.DOT)) {
+      // t.* → Column(this=Star(), table=Identifier("t"))
+      if (this._match(TokenType.STAR)) {
+        if (thisExpr instanceof exp.Column && !thisExpr.args["table"]) {
+          return this.expression(exp.Column, {
+            this: this.expression(exp.Star, {}),
+            table: thisExpr.args["this"],
+          });
+        }
+        return this.expression(exp.Dot, {
+          this: thisExpr,
+          expression: this.expression(exp.Star, {}),
+        });
+      }
+
       const field =
         this._parseFunction() ?? this._parseIdentifierOrVar();
       if (!field) break;

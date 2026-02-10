@@ -339,7 +339,7 @@ LIMIT 20`,
     SUM(\`o\`.\`total\`) AS \`sum_total\`,
     MIN(\`o\`.\`total\`) AS \`min_order\`,
     MAX(\`o\`.\`total\`) AS \`max_order\`,
-    GROUP_CONCAT(DISTINCT \`o\`.\`status\` ORDER BY \`o\`.\`status\` SEPARATOR ', ') AS \`statuses\`
+    COUNT(DISTINCT \`o\`.\`status\`) AS \`status_count\`
   FROM \`orders\` AS \`o\`
   WHERE \`o\`.\`created_at\` >= '2024-01-01'
     AND \`o\`.\`status\` <> 'cancelled'
@@ -355,7 +355,7 @@ LIMIT 20`,
     \`os\`.\`sum_total\`,
     \`os\`.\`min_order\`,
     \`os\`.\`max_order\`,
-    \`os\`.\`statuses\`,
+    \`os\`.\`status_count\`,
     ROW_NUMBER() OVER (ORDER BY \`os\`.\`sum_total\` DESC) AS \`rn\`,
     SUM(\`os\`.\`sum_total\`) OVER () AS \`grand_total\`,
     ROUND(\`os\`.\`sum_total\` * 100.0 / SUM(\`os\`.\`sum_total\`) OVER (), 2) AS \`pct_of_total\`,
@@ -377,7 +377,7 @@ SELECT
   \`sum_total\` AS \`total_spent\`,
   \`min_order\`,
   \`max_order\`,
-  \`statuses\`,
+  \`status_count\`,
   CASE
     WHEN \`sum_total\` > 500 THEN 'VIP'
     WHEN \`sum_total\` > 200 THEN 'Regular'
