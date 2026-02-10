@@ -41,11 +41,11 @@ WHERE \`orders\`.\`total\` > 100`,
     read: "mysql",
     write: "postgres",
     sql: `SELECT
-  CAST(x AS SIGNED),
-  CAST(y AS FLOAT),
-  CAST(z AS DOUBLE),
-  CAST(b AS BINARY),
-  CAST(d AS DATETIME)`,
+  CAST(\`total\` AS SIGNED),
+  CAST(\`total\` AS FLOAT),
+  CAST(\`total\` AS DOUBLE),
+  CAST(\`created_at\` AS DATETIME)
+FROM \`orders\``,
   },
   {
     label: "ILIKE Handling",
