@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL,
+  created_at DATE NOT NULL DEFAULT CURRENT_DATE
+);
 `;
 
 const SEED = `
@@ -44,6 +51,12 @@ INSERT INTO orders (id, user_id, total, status, created_at) VALUES
   (9,  4,  95.00, 'completed',  '2024-02-25 15:00:00'),
   (10, 4, 230.00, 'cancelled',  '2024-03-15 10:30:00'),
   (11, 1, 125.00, 'cancelled',  '2024-03-20 12:00:00');
+
+INSERT INTO products (id, name, price, created_at) VALUES
+  (1, 'Widget',     29.99,  '2024-01-05'),
+  (2, 'Gadget',    149.50,  '2024-02-14'),
+  (3, 'Doohickey',   9.99,  '2024-03-01'),
+  (4, 'Thingamajig', 75.00, '2024-03-20');
 `;
 
 let db: PGlite | null = null;
