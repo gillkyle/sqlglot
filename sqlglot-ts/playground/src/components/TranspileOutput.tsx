@@ -1,9 +1,20 @@
+import { useState, useCallback } from "react";
+
 interface TranspileOutputProps {
   sql: string;
   error?: string;
 }
 
 export default function TranspileOutput({ sql, error }: TranspileOutputProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(sql).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [sql]);
+
   if (error) {
     return (
       <div className="transpile-output">
@@ -24,9 +35,14 @@ export default function TranspileOutput({ sql, error }: TranspileOutputProps) {
 
   return (
     <div className="transpile-output">
-      <pre>
-        <code>{sql}</code>
-      </pre>
+      <div className="transpile-output-wrapper">
+        <button className="copy-btn" onClick={handleCopy}>
+          {copied ? "Copied!" : "Copy"}
+        </button>
+        <pre>
+          <code>{sql}</code>
+        </pre>
+      </div>
     </div>
   );
 }

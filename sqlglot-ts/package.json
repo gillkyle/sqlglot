@@ -38,6 +38,86 @@
     "./dialects/sqlite": {
       "types": "./dist/dialects/sqlite.d.ts",
       "import": "./dist/dialects/sqlite.js"
+    },
+    "./dialects/athena": {
+      "types": "./dist/dialects/athena.d.ts",
+      "import": "./dist/dialects/athena.js"
+    },
+    "./dialects/doris": {
+      "types": "./dist/dialects/doris.d.ts",
+      "import": "./dist/dialects/doris.js"
+    },
+    "./dialects/dremio": {
+      "types": "./dist/dialects/dremio.d.ts",
+      "import": "./dist/dialects/dremio.js"
+    },
+    "./dialects/drill": {
+      "types": "./dist/dialects/drill.d.ts",
+      "import": "./dist/dialects/drill.js"
+    },
+    "./dialects/druid": {
+      "types": "./dist/dialects/druid.d.ts",
+      "import": "./dist/dialects/druid.js"
+    },
+    "./dialects/dune": {
+      "types": "./dist/dialects/dune.d.ts",
+      "import": "./dist/dialects/dune.js"
+    },
+    "./dialects/exasol": {
+      "types": "./dist/dialects/exasol.d.ts",
+      "import": "./dist/dialects/exasol.js"
+    },
+    "./dialects/fabric": {
+      "types": "./dist/dialects/fabric.d.ts",
+      "import": "./dist/dialects/fabric.js"
+    },
+    "./dialects/hive": {
+      "types": "./dist/dialects/hive.d.ts",
+      "import": "./dist/dialects/hive.js"
+    },
+    "./dialects/materialize": {
+      "types": "./dist/dialects/materialize.d.ts",
+      "import": "./dist/dialects/materialize.js"
+    },
+    "./dialects/oracle": {
+      "types": "./dist/dialects/oracle.d.ts",
+      "import": "./dist/dialects/oracle.js"
+    },
+    "./dialects/prql": {
+      "types": "./dist/dialects/prql.d.ts",
+      "import": "./dist/dialects/prql.js"
+    },
+    "./dialects/risingwave": {
+      "types": "./dist/dialects/risingwave.d.ts",
+      "import": "./dist/dialects/risingwave.js"
+    },
+    "./dialects/solr": {
+      "types": "./dist/dialects/solr.d.ts",
+      "import": "./dist/dialects/solr.js"
+    },
+    "./dialects/spark": {
+      "types": "./dist/dialects/spark.d.ts",
+      "import": "./dist/dialects/spark.js"
+    },
+    "./dialects/spark2": {
+      "types": "./dist/dialects/spark2.d.ts",
+      "import": "./dist/dialects/spark2.js"
+    },
+    "./dialects/starrocks": {
+      "types": "./dist/dialects/starrocks.d.ts",
+      "import": "./dist/dialects/starrocks.js"
+    },
+    "./dialects/tableau": {
+      "types": "./dist/dialects/tableau.d.ts",
+      "import": "./dist/dialects/tableau.js"
+    },
+    "./dialects/teradata": {
+      "types": "./dist/dialects/teradata.d.ts",
+      "import": "./dist/dialects/teradata.js"
+    },
+    "./dialects/tsql": {
+      "types": "./dist/dialects/tsql.d.ts",
+      "import": "./dist/dialects/tsql.js"
     }
   },
   "scripts": {

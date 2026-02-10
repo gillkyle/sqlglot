@@ -16,7 +16,7 @@ import type { Expression } from "../expressions.js";
 // Postgres Generator
 // ---------------------------------------------------------------------------
 
-class PostgresGenerator extends Generator {
+export class PostgresGenerator extends Generator {
   /**
    * Type mapping for Postgres-specific type names.
    * Maps internal type names to their Postgres equivalents.

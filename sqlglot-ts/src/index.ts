@@ -25,7 +25,7 @@ export {
   TokenError,
   UnsupportedError,
 } from "./errors.js";
-export { Dialect, BigQuery, ClickHouse, Databricks, DuckDB, MySQL, Postgres, Presto, Redshift, SingleStore, Snowflake, SQLite, Trino } from "./dialects/index.js";
+export { Dialect, Athena, BigQuery, ClickHouse, Databricks, Doris, Dremio, Drill, Druid, DuckDB, Dune, Exasol, Fabric, Hive, Materialize, MySQL, Oracle, Postgres, Presto, PRQL, Redshift, RisingWave, SingleStore, Snowflake, Solr, Spark, Spark2, SQLite, StarRocks, Tableau, Teradata, Trino, TSQL } from "./dialects/index.js";
 export { Parser } from "./parser.js";
 export { Generator } from "./generator.js";
 export * from "./expressions.js";

@@ -15,14 +15,17 @@ ORDER BY orders.total DESC`;
 interface Preset {
   label: string;
   description: string;
+  category: string;
   sql: string;
   read: string;
   write: string;
 }
 
 const PRESETS: Preset[] = [
+  // ── Basics ──
   {
     label: "Identifier Quoting",
+    category: "Basics",
     description: "MySQL backticks become Postgres double-quotes",
     read: "mysql",
     write: "postgres",
@@ -33,6 +36,7 @@ WHERE \`orders\`.\`total\` > 100`,
   },
   {
     label: "Type Mappings",
+    category: "Basics",
     description: "MySQL types map to Postgres equivalents",
     read: "mysql",
     write: "postgres",
@@ -45,6 +49,7 @@ WHERE \`orders\`.\`total\` > 100`,
   },
   {
     label: "ILIKE Handling",
+    category: "Basics",
     description: "Postgres ILIKE becomes MySQL LIKE (no ILIKE in MySQL)",
     read: "postgres",
     write: "mysql",
@@ -54,7 +59,145 @@ WHERE name ILIKE '%alice%'
    OR email ILIKE '%example%'`,
   },
   {
+    label: "NULL Handling",
+    category: "Basics",
+    description: "IS NULL, IS NOT NULL, COALESCE, and NULLIF",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  name,
+  COALESCE(email, 'no email') AS email,
+  NULLIF(status, 'pending') AS active_status
+FROM users
+LEFT JOIN orders ON users.id = orders.user_id
+WHERE orders.id IS NOT NULL
+   OR users.email IS NULL`,
+  },
+
+  // ── Advanced Patterns ──
+  {
+    label: "Window Functions",
+    category: "Advanced Patterns",
+    description: "SUM() OVER with PARTITION BY and ORDER BY across dialects",
+    read: "mysql",
+    write: "postgres",
+    sql: `SELECT
+  \`user_id\`,
+  \`total\`,
+  SUM(\`total\`) OVER (PARTITION BY \`user_id\` ORDER BY \`created_at\`) AS \`running_total\`,
+  ROW_NUMBER() OVER (PARTITION BY \`user_id\` ORDER BY \`total\` DESC) AS \`rank\`
+FROM \`orders\``,
+  },
+  {
+    label: "Chained CTEs",
+    category: "Advanced Patterns",
+    description: "Two CTEs where the second references the first",
+    read: "mysql",
+    write: "postgres",
+    sql: `WITH \`order_totals\` AS (
+  SELECT \`user_id\`, SUM(\`total\`) AS \`spent\`
+  FROM \`orders\`
+  GROUP BY \`user_id\`
+),
+\`ranked\` AS (
+  SELECT \`user_id\`, \`spent\`,
+    RANK() OVER (ORDER BY \`spent\` DESC) AS \`rnk\`
+  FROM \`order_totals\`
+)
+SELECT \`u\`.\`name\`, \`r\`.\`spent\`, \`r\`.\`rnk\`
+FROM \`ranked\` AS \`r\`
+JOIN \`users\` AS \`u\` ON \`r\`.\`user_id\` = \`u\`.\`id\`
+WHERE \`r\`.\`rnk\` <= 10`,
+  },
+  {
+    label: "Correlated Subquery",
+    category: "Advanced Patterns",
+    description: "Subquery in SELECT that references the outer table",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  u.name,
+  (SELECT MAX(o.total) FROM orders AS o WHERE o.user_id = u.id) AS max_order,
+  (SELECT COUNT(*) FROM orders AS o WHERE o.user_id = u.id) AS order_count
+FROM users AS u
+WHERE u.id IN (SELECT user_id FROM orders)`,
+  },
+  {
+    label: "CASE Inside Aggregates",
+    category: "Advanced Patterns",
+    description: "SUM(CASE WHEN ...) for conditional aggregation",
+    read: "mysql",
+    write: "postgres",
+    sql: `SELECT
+  \`u\`.\`name\`,
+  SUM(CASE WHEN \`o\`.\`status\` = 'completed' THEN 1 ELSE 0 END) AS \`completed\`,
+  SUM(CASE WHEN \`o\`.\`status\` = 'pending' THEN 1 ELSE 0 END) AS \`pending\`,
+  SUM(CASE WHEN \`o\`.\`status\` = 'cancelled' THEN \`o\`.\`total\` ELSE 0 END) AS \`lost_revenue\`
+FROM \`users\` AS \`u\`
+JOIN \`orders\` AS \`o\` ON \`u\`.\`id\` = \`o\`.\`user_id\`
+GROUP BY \`u\`.\`name\``,
+  },
+
+  // ── Cross-Dialect ──
+  {
+    label: "SingleStore :> Cast",
+    category: "Cross-Dialect",
+    description: "Standard CAST(x AS INT) becomes SingleStore's x :> INT operator",
+    read: "postgres",
+    write: "singlestore",
+    sql: `SELECT
+  CAST(price AS INT),
+  CAST(name AS TEXT),
+  CAST(created_at AS DATE)
+FROM products`,
+  },
+  {
+    label: "BigQuery Type System",
+    category: "Cross-Dialect",
+    description: "INT→INT64, FLOAT→FLOAT64, and backtick identifiers for BigQuery",
+    read: "sqlglot",
+    write: "bigquery",
+    sql: `SELECT
+  CAST(x AS INT),
+  CAST(y AS FLOAT),
+  CAST(z AS TEXT)
+FROM my_project.my_dataset.my_table
+WHERE id > 100`,
+  },
+  {
+    label: "Snowflake Identifiers",
+    category: "Cross-Dialect",
+    description: "MySQL backticks become Snowflake double-quoted identifiers",
+    read: "mysql",
+    write: "snowflake",
+    sql: `SELECT \`users\`.\`name\`, \`orders\`.\`total\`
+FROM \`my_db\`.\`my_schema\`.\`users\`
+JOIN \`orders\` ON \`users\`.\`id\` = \`orders\`.\`user_id\`
+WHERE \`orders\`.\`total\` > 100
+ORDER BY \`orders\`.\`total\` DESC`,
+  },
+
+  // ── Runnable (PGlite) ──
+  {
+    label: "Runnable Query",
+    category: "Runnable (PGlite)",
+    description: "Try it! Click Run to execute against PGlite",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  users.name,
+  COUNT(*) AS order_count,
+  SUM(orders.total) AS total_spent
+FROM users
+JOIN orders ON users.id = orders.user_id
+WHERE orders.status = 'completed'
+GROUP BY users.name
+HAVING SUM(orders.total) > 100
+ORDER BY total_spent DESC`,
+  },
+  {
     label: "JOINs & Subqueries",
+    category: "Runnable (PGlite)",
     description: "Complex joins and subqueries transpile across dialects",
     read: "mysql",
     write: "postgres",
@@ -69,6 +212,7 @@ WHERE \`u\`.\`id\` IN (
   },
   {
     label: "CTE (WITH clause)",
+    category: "Runnable (PGlite)",
     description: "Common Table Expressions work across dialects",
     read: "mysql",
     write: "postgres",
@@ -84,6 +228,7 @@ JOIN \`users\` ON \`big_spenders\`.\`user_id\` = \`users\`.\`id\``,
   },
   {
     label: "Aggregates & CASE",
+    category: "Runnable (PGlite)",
     description: "Aggregate functions and CASE WHEN expressions",
     read: "sqlglot",
     write: "postgres",
@@ -102,34 +247,16 @@ GROUP BY users.name
 ORDER BY total_spent DESC`,
   },
   {
-    label: "NULL Handling",
-    description: "IS NULL, IS NOT NULL, COALESCE, and NULLIF",
+    label: "Set Operations",
+    category: "Runnable (PGlite)",
+    description: "UNION ALL with ORDER BY and LIMIT",
     read: "sqlglot",
     write: "postgres",
-    sql: `SELECT
-  name,
-  COALESCE(email, 'no email') AS email,
-  NULLIF(status, 'pending') AS active_status
-FROM users
-LEFT JOIN orders ON users.id = orders.user_id
-WHERE orders.id IS NOT NULL
-   OR users.email IS NULL`,
-  },
-  {
-    label: "Runnable Query",
-    description: "Try it! Click Run to execute against PGlite",
-    read: "sqlglot",
-    write: "postgres",
-    sql: `SELECT
-  users.name,
-  COUNT(*) AS order_count,
-  SUM(orders.total) AS total_spent
-FROM users
-JOIN orders ON users.id = orders.user_id
-WHERE orders.status = 'completed'
-GROUP BY users.name
-HAVING SUM(orders.total) > 100
-ORDER BY total_spent DESC`,
+    sql: `SELECT name, 'user' AS source FROM users WHERE id <= 3
+UNION ALL
+SELECT status AS name, 'order' AS source FROM orders WHERE total > 200
+ORDER BY name
+LIMIT 10`,
   },
 ];
 
@@ -144,36 +271,43 @@ export default function App() {
   const [ast, setAst] = useState<Expression | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [runTrigger, setRunTrigger] = useState(0);
+  const [prettyPrint, setPrettyPrint] = useState(true);
+  const [activePresetDesc, setActivePresetDesc] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const doTranspile = useCallback((sql: string, read: string, write: string) => {
-    try {
-      const readDial = Dialect.getOrRaise(read);
-      const writeDial = Dialect.getOrRaise(write);
-      const parsed = readDial.parse(sql);
+  const doTranspile = useCallback(
+    (sql: string, read: string, write: string, pretty?: boolean) => {
+      const usePretty = pretty ?? prettyPrint;
+      try {
+        const readDial = Dialect.getOrRaise(read);
+        const writeDial = Dialect.getOrRaise(write);
+        const parsed = readDial.parse(sql);
 
-      // Set the AST from the first expression
-      const firstExpr = parsed.find((e) => e !== null) ?? null;
-      setAst(firstExpr);
+        // Set the AST from the first expression
+        const firstExpr = parsed.find((e) => e !== null) ?? null;
+        setAst(firstExpr);
 
-      // Generate output
-      const output = parsed
-        .map((expr) => {
-          if (!expr) return "";
-          return writeDial.generate(expr, { pretty: true });
-        })
-        .filter((s) => s.length > 0)
-        .join(";\n\n");
+        // Generate output
+        const output = parsed
+          .map((expr) => {
+            if (!expr) return "";
+            return writeDial.generate(expr, { pretty: usePretty });
+          })
+          .filter((s) => s.length > 0)
+          .join(";\n\n");
 
-      setTranspiled(output);
-      setError(undefined);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      setTranspiled("");
-      setAst(null);
-    }
-  }, []);
+        setTranspiled(output);
+        setError(undefined);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        setTranspiled("");
+        setAst(null);
+      }
+    },
+    [prettyPrint],
+  );
 
   // Auto-transpile when dialects change
   useEffect(() => {
@@ -214,6 +348,11 @@ export default function App() {
       setReadDialect(preset.read);
       setWriteDialect(preset.write);
       doTranspile(preset.sql, preset.read, preset.write);
+
+      // Show description banner
+      if (bannerTimeoutRef.current) clearTimeout(bannerTimeoutRef.current);
+      setActivePresetDesc(preset.description);
+      bannerTimeoutRef.current = setTimeout(() => setActivePresetDesc(null), 5000);
     },
     [doTranspile],
   );
@@ -239,6 +378,17 @@ export default function App() {
         <div className="toolbar-spacer" />
 
         <div className="toolbar-group">
+          <button
+            className={`btn btn-sm ${prettyPrint ? "btn-toggle-active" : ""}`}
+            onClick={() => {
+              const next = !prettyPrint;
+              setPrettyPrint(next);
+              doTranspile(sqlInput, readDialect, writeDialect, next);
+            }}
+            title={prettyPrint ? "Switch to compact output" : "Switch to pretty output"}
+          >
+            {prettyPrint ? "Pretty" : "Compact"}
+          </button>
           <button
             className="btn"
             onClick={() => doTranspile(sqlInput, readDialect, writeDialect)}
@@ -278,13 +428,33 @@ export default function App() {
               <option value="" disabled>
                 Examples...
               </option>
-              {PRESETS.map((p, i) => (
-                <option key={i} value={i}>
-                  {p.label}
-                </option>
-              ))}
+              {(() => {
+                const categories: string[] = [];
+                for (const p of PRESETS) {
+                  if (!categories.includes(p.category)) categories.push(p.category);
+                }
+                return categories.map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {PRESETS.map((p, i) =>
+                      p.category === cat ? (
+                        <option key={i} value={i}>
+                          {p.label}
+                        </option>
+                      ) : null,
+                    )}
+                  </optgroup>
+                ));
+              })()}
             </select>
           </div>
+          {activePresetDesc && (
+            <div
+              className="preset-banner"
+              onClick={() => setActivePresetDesc(null)}
+            >
+              {activePresetDesc}
+            </div>
+          )}
           <div className="panel-content">
             <SqlEditor value={sqlInput} onChange={handleSqlChange} />
           </div>
