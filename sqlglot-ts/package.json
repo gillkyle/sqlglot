@@ -1,0 +1,30 @@
+{
+  "name": "sqlglot-ts",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./dialects/postgres": {
+      "types": "./dist/dialects/postgres.d.ts",
+      "import": "./dist/dialects/postgres.js"
+    },
+    "./dialects/mysql": {
+      "types": "./dist/dialects/mysql.d.ts",
+      "import": "./dist/dialects/mysql.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "tsdown": "^0.9.0"
+  }
+}

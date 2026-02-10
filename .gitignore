@@ -144,3 +144,10 @@ sqlglot/_version.py
 
 # Emacs files
 *~
+
+# pnpm
+.pnpm-store/
+node_modules/
+
+# sqlglot-ts build output
+sqlglot-ts/dist/
