@@ -3,5 +3,7 @@ export { BigQuery } from "./bigquery.js";
 export { DuckDB } from "./duckdb.js";
 export { MySQL } from "./mysql.js";
 export { Postgres } from "./postgres.js";
+export { Redshift } from "./redshift.js";
 export { SingleStore } from "./singlestore.js";
+export { Snowflake } from "./snowflake.js";
 export { SQLite } from "./sqlite.js";

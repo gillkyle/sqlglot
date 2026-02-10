@@ -10,7 +10,9 @@ const DIALECTS = [
   { value: "duckdb", label: "DuckDB" },
   { value: "mysql", label: "MySQL" },
   { value: "postgres", label: "PostgreSQL" },
+  { value: "redshift", label: "Redshift" },
   { value: "singlestore", label: "SingleStore" },
+  { value: "snowflake", label: "Snowflake" },
   { value: "sqlite", label: "SQLite" },
 ];
 

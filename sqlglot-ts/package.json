@@ -23,6 +23,10 @@
       "types": "./dist/dialects/mysql.d.ts",
       "import": "./dist/dialects/mysql.js"
     },
+    "./dialects/redshift": {
+      "types": "./dist/dialects/redshift.d.ts",
+      "import": "./dist/dialects/redshift.js"
+    },
     "./dialects/sqlite": {
       "types": "./dist/dialects/sqlite.d.ts",
       "import": "./dist/dialects/sqlite.js"
