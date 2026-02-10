@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-pre-commit bench bench-parse bench-optimize test test-fast test-fast-rs unit style check docs docs-serve
+.PHONY: install install-dev install-pre-commit bench bench-parse bench-optimize bench-compare bench-py bench-ts test test-fast test-fast-rs unit style check docs docs-serve
 
 ifdef UV
     PIP := uv pip
@@ -31,6 +31,18 @@ bench-parse: install-dev-rs-release
 
 bench-optimize: install-dev-rs-release
 	python -m benchmarks.optimize
+
+bench-compare:
+	python benchmarks/compare.py
+
+bench-compare-md:
+	python benchmarks/compare.py --markdown
+
+bench-py:
+	python -m benchmarks.bench_py
+
+bench-ts:
+	cd sqlglot-ts && npx vitest bench --run benchmarks/bench.bench.ts
 
 test:
 	SQLGLOTRS_TOKENIZER=0 python -m unittest
