@@ -25,7 +25,7 @@ export {
   TokenError,
   UnsupportedError,
 } from "./errors.js";
-export { Dialect } from "./dialects/index.js";
+export { Dialect, MySQL, Postgres } from "./dialects/index.js";
 export { Parser } from "./parser.js";
 export { Generator } from "./generator.js";
 export * from "./expressions.js";
