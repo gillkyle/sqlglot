@@ -1,7 +1,11 @@
 {
-  "name": "sqlglot-ts",
-  "version": "0.0.1",
+  "name": "sqlglot",
+  "version": "0.0.2",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
