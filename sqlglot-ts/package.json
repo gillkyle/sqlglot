@@ -31,6 +31,10 @@
       "types": "./dist/dialects/clickhouse.d.ts",
       "import": "./dist/dialects/clickhouse.js"
     },
+    "./dialects/databricks": {
+      "types": "./dist/dialects/databricks.d.ts",
+      "import": "./dist/dialects/databricks.js"
+    },
     "./dialects/sqlite": {
       "types": "./dist/dialects/sqlite.d.ts",
       "import": "./dist/dialects/sqlite.js"
