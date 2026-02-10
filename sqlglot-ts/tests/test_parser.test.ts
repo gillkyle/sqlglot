@@ -62,6 +62,7 @@ import {
   Null,
   TryCast,
   Extract,
+  Distinct,
 } from "../src/expressions.js";
 
 describe("TestParser", () => {
@@ -935,7 +936,9 @@ describe("TestParser", () => {
 
     it("parses IS NOT NULL", () => {
       const result = parseOne("x IS NOT NULL");
-      expect(result).toBeInstanceOf(Not);
+      expect(result).toBeInstanceOf(Is);
+      expect(result.args["not"]).toBeTruthy();
+      expect(result.sql()).toBe("x IS NOT NULL");
     });
 
     it("parses IS TRUE", () => {
@@ -1174,8 +1177,19 @@ describe("TestParser", () => {
   });
 
   describe("DISTINCT", () => {
-    it.todo("parses SELECT DISTINCT (exp.Distinct class not defined in expressions.ts)");
-    it.todo("parses SELECT DISTINCT with multiple columns (exp.Distinct class not defined in expressions.ts)");
+    it("parses SELECT DISTINCT", () => {
+      const result = parseOne("SELECT DISTINCT a FROM t");
+      expect(result).toBeInstanceOf(Select);
+      expect(result.args["distinct"]).toBeInstanceOf(Distinct);
+      expect(result.sql()).toBe("SELECT DISTINCT a FROM t");
+    });
+
+    it("parses SELECT DISTINCT with multiple columns", () => {
+      const result = parseOne("SELECT DISTINCT a, b FROM t");
+      expect(result).toBeInstanceOf(Select);
+      expect(result.args["distinct"]).toBeInstanceOf(Distinct);
+      expect(result.sql()).toBe("SELECT DISTINCT a, b FROM t");
+    });
   });
 
   describe("parse function returns array", () => {

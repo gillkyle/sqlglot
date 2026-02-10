@@ -414,7 +414,8 @@ export class Generator {
   }
 
   isSql(expression: Expression): string {
-    return this.binary(expression, "IS");
+    const not = expression.args["not"] ? " NOT" : "";
+    return this.binary(expression, `IS${not}`);
   }
 
   likeSql(expression: Expression): string {

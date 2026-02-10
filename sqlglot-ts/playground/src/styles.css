@@ -148,6 +148,32 @@ body {
   letter-spacing: 0.05em;
 }
 
+.panel-header {
+  justify-content: space-between;
+}
+
+.preset-selector {
+  font-size: 11px;
+  font-family: var(--font-sans);
+  padding: 2px 8px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+  outline: none;
+}
+
+.preset-selector:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.preset-selector:focus {
+  border-color: var(--accent);
+}
+
 .panel-content {
   flex: 1;
   min-height: 0;
@@ -180,13 +206,18 @@ body {
   font-family: var(--font-sans);
 }
 
-.tab:hover {
+.tab:hover:not(:disabled) {
   color: var(--text-secondary);
 }
 
 .tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+}
+
+.tab-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ============================================================
@@ -269,9 +300,15 @@ body {
   font-weight: 600;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+}
+
+.btn:disabled,
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn-sm {

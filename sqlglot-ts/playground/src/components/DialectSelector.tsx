@@ -6,8 +6,12 @@ interface DialectSelectorProps {
 
 const DIALECTS = [
   { value: "sqlglot", label: "SQLGlot" },
-  { value: "postgres", label: "PostgreSQL" },
+  { value: "bigquery", label: "BigQuery" },
+  { value: "duckdb", label: "DuckDB" },
   { value: "mysql", label: "MySQL" },
+  { value: "postgres", label: "PostgreSQL" },
+  { value: "singlestore", label: "SingleStore" },
+  { value: "sqlite", label: "SQLite" },
 ];
 
 export default function DialectSelector({ label, value, onChange }: DialectSelectorProps) {

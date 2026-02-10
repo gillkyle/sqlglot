@@ -1404,6 +1404,15 @@ export class Alias extends Expression {
 }
 
 // ---------------------------------------------------------------------------
+// Distinct
+// ---------------------------------------------------------------------------
+
+export class Distinct extends Expression {
+  static override argTypes: Record<string, boolean> = { expressions: false, on: false };
+  static override key = "distinct";
+}
+
+// ---------------------------------------------------------------------------
 // Select
 // ---------------------------------------------------------------------------
 

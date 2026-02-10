@@ -11,9 +11,21 @@
       "types": "./dist/dialects/postgres.d.ts",
       "import": "./dist/dialects/postgres.js"
     },
+    "./dialects/bigquery": {
+      "types": "./dist/dialects/bigquery.d.ts",
+      "import": "./dist/dialects/bigquery.js"
+    },
+    "./dialects/duckdb": {
+      "types": "./dist/dialects/duckdb.d.ts",
+      "import": "./dist/dialects/duckdb.js"
+    },
     "./dialects/mysql": {
       "types": "./dist/dialects/mysql.d.ts",
       "import": "./dist/dialects/mysql.js"
+    },
+    "./dialects/sqlite": {
+      "types": "./dist/dialects/sqlite.d.ts",
+      "import": "./dist/dialects/sqlite.js"
     }
   },
   "scripts": {

@@ -12,6 +12,127 @@ JOIN orders ON users.id = orders.user_id
 WHERE orders.total > 100
 ORDER BY orders.total DESC`;
 
+interface Preset {
+  label: string;
+  description: string;
+  sql: string;
+  read: string;
+  write: string;
+}
+
+const PRESETS: Preset[] = [
+  {
+    label: "Identifier Quoting",
+    description: "MySQL backticks become Postgres double-quotes",
+    read: "mysql",
+    write: "postgres",
+    sql: `SELECT \`users\`.\`name\`, \`orders\`.\`total\`
+FROM \`users\`
+JOIN \`orders\` ON \`users\`.\`id\` = \`orders\`.\`user_id\`
+WHERE \`orders\`.\`total\` > 100`,
+  },
+  {
+    label: "Type Mappings",
+    description: "MySQL types map to Postgres equivalents",
+    read: "mysql",
+    write: "postgres",
+    sql: `SELECT
+  CAST(x AS SIGNED),
+  CAST(y AS FLOAT),
+  CAST(z AS DOUBLE),
+  CAST(b AS BINARY),
+  CAST(d AS DATETIME)`,
+  },
+  {
+    label: "ILIKE Handling",
+    description: "Postgres ILIKE becomes MySQL LIKE (no ILIKE in MySQL)",
+    read: "postgres",
+    write: "mysql",
+    sql: `SELECT name, email
+FROM users
+WHERE name ILIKE '%alice%'
+   OR email ILIKE '%example%'`,
+  },
+  {
+    label: "JOINs & Subqueries",
+    description: "Complex joins and subqueries transpile across dialects",
+    read: "mysql",
+    write: "postgres",
+    sql: `SELECT \`u\`.\`name\`, \`o\`.\`total\`
+FROM \`users\` AS \`u\`
+LEFT JOIN \`orders\` AS \`o\`
+  ON \`u\`.\`id\` = \`o\`.\`user_id\`
+WHERE \`u\`.\`id\` IN (
+  SELECT \`user_id\` FROM \`orders\`
+  WHERE \`status\` = 'completed'
+)`,
+  },
+  {
+    label: "CTE (WITH clause)",
+    description: "Common Table Expressions work across dialects",
+    read: "mysql",
+    write: "postgres",
+    sql: `WITH \`big_spenders\` AS (
+  SELECT \`user_id\`, SUM(\`total\`) AS \`spent\`
+  FROM \`orders\`
+  GROUP BY \`user_id\`
+  HAVING SUM(\`total\`) > 200
+)
+SELECT \`users\`.\`name\`, \`big_spenders\`.\`spent\`
+FROM \`big_spenders\`
+JOIN \`users\` ON \`big_spenders\`.\`user_id\` = \`users\`.\`id\``,
+  },
+  {
+    label: "Aggregates & CASE",
+    description: "Aggregate functions and CASE WHEN expressions",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  users.name,
+  COUNT(*) AS order_count,
+  SUM(orders.total) AS total_spent,
+  CASE
+    WHEN SUM(orders.total) > 500 THEN 'VIP'
+    WHEN SUM(orders.total) > 100 THEN 'Regular'
+    ELSE 'New'
+  END AS tier
+FROM users
+JOIN orders ON users.id = orders.user_id
+GROUP BY users.name
+ORDER BY total_spent DESC`,
+  },
+  {
+    label: "NULL Handling",
+    description: "IS NULL, IS NOT NULL, COALESCE, and NULLIF",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  name,
+  COALESCE(email, 'no email') AS email,
+  NULLIF(status, 'pending') AS active_status
+FROM users
+LEFT JOIN orders ON users.id = orders.user_id
+WHERE orders.id IS NOT NULL
+   OR users.email IS NULL`,
+  },
+  {
+    label: "Runnable Query",
+    description: "Try it! Click Run to execute against PGlite",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `SELECT
+  users.name,
+  COUNT(*) AS order_count,
+  SUM(orders.total) AS total_spent
+FROM users
+JOIN orders ON users.id = orders.user_id
+WHERE orders.status = 'completed'
+GROUP BY users.name
+HAVING SUM(orders.total) > 100
+ORDER BY total_spent DESC`,
+  },
+];
+
 type Tab = "sql" | "ast" | "results";
 
 export default function App() {
@@ -57,6 +178,9 @@ export default function App() {
   // Auto-transpile when dialects change
   useEffect(() => {
     doTranspile(sqlInput, readDialect, writeDialect);
+    if (writeDialect !== "postgres" && activeTab === "results") {
+      setActiveTab("sql");
+    }
   }, [readDialect, writeDialect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced transpile on SQL input change
@@ -81,6 +205,18 @@ export default function App() {
     setActiveTab("results");
     setRunTrigger((prev) => prev + 1);
   }, []);
+
+  const handlePreset = useCallback(
+    (index: number) => {
+      const preset = PRESETS[index];
+      if (!preset) return;
+      setSqlInput(preset.sql);
+      setReadDialect(preset.read);
+      setWriteDialect(preset.write);
+      doTranspile(preset.sql, preset.read, preset.write);
+    },
+    [doTranspile],
+  );
 
   return (
     <div className="app">
@@ -109,7 +245,16 @@ export default function App() {
           >
             Transpile
           </button>
-          <button className="btn btn-primary" onClick={handleRun}>
+          <button
+            className="btn btn-primary"
+            onClick={handleRun}
+            disabled={writeDialect !== "postgres"}
+            title={
+              writeDialect !== "postgres"
+                ? "Run requires PostgreSQL as the write dialect (PGlite)"
+                : "Execute query against PGlite"
+            }
+          >
             Run
           </button>
         </div>
@@ -121,6 +266,24 @@ export default function App() {
         <div className="panel panel-left">
           <div className="panel-header">
             <span>Input</span>
+            <select
+              className="preset-selector"
+              value=""
+              onChange={(e) => {
+                const idx = Number(e.target.value);
+                if (!isNaN(idx)) handlePreset(idx);
+                e.target.value = "";
+              }}
+            >
+              <option value="" disabled>
+                Examples...
+              </option>
+              {PRESETS.map((p, i) => (
+                <option key={i} value={i}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="panel-content">
             <SqlEditor value={sqlInput} onChange={handleSqlChange} />
@@ -143,8 +306,14 @@ export default function App() {
               AST
             </button>
             <button
-              className={`tab ${activeTab === "results" ? "active" : ""}`}
+              className={`tab ${activeTab === "results" ? "active" : ""} ${writeDialect !== "postgres" ? "tab-disabled" : ""}`}
               onClick={() => setActiveTab("results")}
+              disabled={writeDialect !== "postgres"}
+              title={
+                writeDialect !== "postgres"
+                  ? "Results require PostgreSQL as the write dialect"
+                  : undefined
+              }
             >
               Results
             </button>

@@ -460,6 +460,17 @@ export class Parser {
 
   private _parseTableAlias(): Expression | null {
     const anyToken = this._match(TokenType.ALIAS);
+
+    // Don't consume JOIN keywords (LEFT, RIGHT, FULL, INNER, OUTER, CROSS,
+    // NATURAL, JOIN) as table aliases — they start a JOIN clause.
+    if (
+      !anyToken &&
+      this._curr &&
+      TABLE_ALIAS_STOP_TOKENS.has(this._curr.tokenType)
+    ) {
+      return null;
+    }
+
     const ident = this._parseIdentifierOrVar();
     if (!ident && !anyToken) return null;
     if (!ident) return null;
@@ -713,12 +724,9 @@ export class Parser {
     let thisExpr = this._parseBitwise();
     const negate = this._match(TokenType.NOT);
 
-    // IS
+    // IS (NOT is handled inside _parseIs)
     if (this._match(TokenType.IS)) {
       thisExpr = this._parseIs(thisExpr);
-      if (negate && thisExpr) {
-        thisExpr = this.expression(exp.Not, { this: thisExpr });
-      }
       return thisExpr;
     }
 
@@ -784,13 +792,11 @@ export class Parser {
   private _parseIs(thisExpr: Expression | null): Expression | null {
     const negate = this._match(TokenType.NOT);
     const expr = this._parsePrimary() ?? this._parseBitwise();
-    let result = this.expression(exp.Is, {
+    const result = this.expression(exp.Is, {
       this: thisExpr,
       expression: expr,
+      not: negate || undefined,
     });
-    if (negate) {
-      result = this.expression(exp.Not, { this: result }) as any;
-    }
     return result;
   }
 
@@ -1379,6 +1385,21 @@ const JOIN_KINDS = new Set<TokenType>([
   TokenType.CROSS,
   TokenType.SEMI,
   TokenType.ANTI,
+]);
+
+// Tokens that should NOT be consumed as table aliases because they start a
+// JOIN clause (sides, kinds, NATURAL, JOIN itself).
+const TABLE_ALIAS_STOP_TOKENS = new Set<TokenType>([
+  TokenType.LEFT,
+  TokenType.RIGHT,
+  TokenType.FULL,
+  TokenType.INNER,
+  TokenType.OUTER,
+  TokenType.CROSS,
+  TokenType.SEMI,
+  TokenType.ANTI,
+  TokenType.NATURAL,
+  TokenType.JOIN,
 ]);
 
 // ID_VAR_TOKENS: tokens that can serve as identifiers

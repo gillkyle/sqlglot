@@ -16,7 +16,7 @@ import type { Expression } from "../expressions.js";
 // MySQL Tokenizer
 // ---------------------------------------------------------------------------
 
-class MySQLTokenizer extends Tokenizer {
+export class MySQLTokenizer extends Tokenizer {
   static override IDENTIFIERS: Array<string | [string, string]> = ["`"];
   static override QUOTES: Array<string | [string, string]> = ["'", '"'];
   static override STRING_ESCAPES: string[] = ["'", "\\"];
@@ -108,7 +108,7 @@ class MySQLTokenizer extends Tokenizer {
 // MySQL Parser
 // ---------------------------------------------------------------------------
 
-class MySQLParser extends Parser {
+export class MySQLParser extends Parser {
   // MySQL parser inherits all base parser behavior. We can add
   // MySQL-specific parsing overrides here in the future.
 }
@@ -117,7 +117,7 @@ class MySQLParser extends Parser {
 // MySQL Generator
 // ---------------------------------------------------------------------------
 
-class MySQLGenerator extends Generator {
+export class MySQLGenerator extends Generator {
   // MySQL uses backtick-quoted identifiers. The identifier quoting
   // is handled by the dialect's IDENTIFIER_START/END settings which
   // flow through to the Generator via the dialect instance.
