@@ -300,11 +300,24 @@ export default function App() {
 
         setTranspiled(output);
         setError(undefined);
+
+        // Always keep postgres SQL in sync for query execution
+        if (write === "postgres") {
+          setPgSql(output);
+        } else {
+          const pgDial = Dialect.getOrRaise("postgres");
+          const pgOutput = parsed
+            .map((expr) => (expr ? pgDial.generate(expr) : ""))
+            .filter((s) => s.length > 0)
+            .join(";\n\n");
+          setPgSql(pgOutput);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
         setTranspiled("");
         setAst(null);
+        setPgSql("");
       }
     },
     [prettyPrint],
@@ -334,21 +347,9 @@ export default function App() {
   }, []);
 
   const handleRun = useCallback(() => {
-    try {
-      const readDial = Dialect.getOrRaise(readDialect);
-      const pgDial = Dialect.getOrRaise("postgres");
-      const parsed = readDial.parse(sqlInput);
-      const pgOutput = parsed
-        .map((expr) => (expr ? pgDial.generate(expr) : ""))
-        .filter((s) => s.length > 0)
-        .join(";\n\n");
-      setPgSql(pgOutput);
-    } catch {
-      setPgSql(sqlInput);
-    }
     setActiveTab("results");
     setRunTrigger((prev) => prev + 1);
-  }, [readDialect, sqlInput]);
+  }, []);
 
   const handlePreset = useCallback(
     (index: number) => {
@@ -494,7 +495,7 @@ export default function App() {
             {activeTab === "ast" && <AstViewer expression={ast} />}
             {activeTab === "results" && (
               <QueryResults
-                sql={pgSql || transpiled || sqlInput}
+                sql={pgSql}
                 autoRun={runTrigger > 0}
                 key={runTrigger}
               />
