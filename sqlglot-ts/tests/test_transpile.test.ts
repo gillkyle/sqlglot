@@ -586,7 +586,9 @@ describe("transpile identity: aggregate functions", () => {
     validateIdentity("SELECT COUNT(*) FROM test");
   });
 
-  it.todo("COUNT(DISTINCT a) FROM test (Distinct expression class missing)");
+  it("COUNT(DISTINCT a) FROM test", () => {
+    validateIdentity("SELECT COUNT(DISTINCT a) FROM test");
+  });
 
   it("SUM(CASE WHEN ...)", () => {
     validateIdentity("SUM(CASE WHEN x > 1 THEN 1 ELSE 0 END) / y");

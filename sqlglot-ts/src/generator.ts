@@ -628,6 +628,21 @@ export class Generator {
     return "DISTINCT";
   }
 
+  // ── COUNT ───────────────────────────────────────────────────────────
+
+  countSql(expression: Expression): string {
+    const thisExpr = expression.this_;
+    const isDistinct =
+      thisExpr && (thisExpr.constructor as any).key === "distinct";
+    const args = expression.expressions ?? [];
+    if (isDistinct && args.length > 0) {
+      const argsSql = args.map((a: any) => this.sql(a)).join(", ");
+      return `COUNT(DISTINCT ${argsSql})`;
+    }
+    const thisSql = this.sql(expression, "this");
+    return `COUNT(${thisSql})`;
+  }
+
   // ── WINDOW ────────────────────────────────────────────────────────────
 
   windowSql(expression: Expression): string {
