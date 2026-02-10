@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { executeQuery, type QueryResult } from "../lib/pglite";
+import { executeQuery, type QueryResult } from "../utils/pglite";
 
 interface QueryResultsProps {
   sql: string;
