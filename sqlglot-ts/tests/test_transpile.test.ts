@@ -1366,3 +1366,99 @@ describe("transpile: kitchen sink queries", () => {
     expect(result).toContain("RANK()");
   });
 });
+
+// =============================================================================
+// Date/time function transpilation tests
+// =============================================================================
+
+describe("transpile: date/time functions", () => {
+  it("CURRENT_DATE round-trips (no parens)", () => {
+    validateIdentity("SELECT CURRENT_DATE");
+  });
+
+  it("CURRENT_TIMESTAMP round-trips (no parens)", () => {
+    validateIdentity("SELECT CURRENT_TIMESTAMP");
+  });
+
+  it("CURRENT_TIME round-trips (no parens)", () => {
+    validateIdentity("SELECT CURRENT_TIME");
+  });
+
+  it("CURRENT_DATE() with parens generates without parens", () => {
+    // CURRENT_DATE() is equivalent to CURRENT_DATE — generated without parens
+    const result = transpile("SELECT CURRENT_DATE()");
+    expect(result[0]).toBe("SELECT CURRENT_DATE");
+  });
+
+  it("CURRENT_TIMESTAMP() with parens generates without parens", () => {
+    const result = transpile("SELECT CURRENT_TIMESTAMP()");
+    expect(result[0]).toBe("SELECT CURRENT_TIMESTAMP");
+  });
+
+  it("NOW() transpiles to CURRENT_TIMESTAMP", () => {
+    const result = transpile("SELECT NOW()");
+    expect(result[0]).toBe("SELECT CURRENT_TIMESTAMP");
+  });
+
+  it("CURDATE() transpiles to CURRENT_DATE", () => {
+    const result = transpile("SELECT CURDATE()");
+    expect(result[0]).toBe("SELECT CURRENT_DATE");
+  });
+
+  it("CURTIME() transpiles to CURRENT_TIME", () => {
+    const result = transpile("SELECT CURTIME()");
+    expect(result[0]).toBe("SELECT CURRENT_TIME");
+  });
+
+  it("MySQL CURDATE() → Postgres CURRENT_DATE", () => {
+    const result = transpile("SELECT CURDATE()", {
+      readDialect: "mysql",
+      writeDialect: "postgres",
+    });
+    expect(result[0]).toBe("SELECT CURRENT_DATE");
+  });
+
+  it("MySQL NOW() → Postgres CURRENT_TIMESTAMP", () => {
+    const result = transpile("SELECT NOW()", {
+      readDialect: "mysql",
+      writeDialect: "postgres",
+    });
+    expect(result[0]).toBe("SELECT CURRENT_TIMESTAMP");
+  });
+
+  it("Postgres NOW() → MySQL CURRENT_TIMESTAMP", () => {
+    const result = transpile("SELECT NOW()", {
+      readDialect: "postgres",
+      writeDialect: "mysql",
+    });
+    expect(result[0]).toBe("SELECT CURRENT_TIMESTAMP");
+  });
+
+  it("MySQL CURRENT_DATE → Postgres CURRENT_DATE", () => {
+    const result = transpile("SELECT CURRENT_DATE", {
+      readDialect: "mysql",
+      writeDialect: "postgres",
+    });
+    expect(result[0]).toBe("SELECT CURRENT_DATE");
+  });
+
+  it("CURRENT_DATE in WHERE clause", () => {
+    validateIdentity(
+      "SELECT * FROM orders WHERE created_at >= CURRENT_DATE"
+    );
+  });
+
+  it("CURRENT_TIMESTAMP in SELECT with alias", () => {
+    validateIdentity("SELECT CURRENT_TIMESTAMP AS now_ts");
+  });
+
+  it("NOW() in complex query transpiles correctly", () => {
+    const result = transpile(
+      "SELECT `id`, `name` FROM `users` WHERE `created_at` < NOW()",
+      { readDialect: "mysql", writeDialect: "postgres" },
+    );
+    expect(result[0]).toBe(
+      'SELECT "id", "name" FROM "users" WHERE "created_at" < CURRENT_TIMESTAMP'
+    );
+  });
+});

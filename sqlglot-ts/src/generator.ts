@@ -643,6 +643,32 @@ export class Generator {
     return `COUNT(${thisSql})`;
   }
 
+  // ── DATE/TIME FUNCTIONS ─────────────────────────────────────────────
+
+  currentdateSql(expression: Expression): string {
+    const zone = this.sql(expression, "this");
+    if (zone) return `CURRENT_DATE AT TIME ZONE ${zone}`;
+    return "CURRENT_DATE";
+  }
+
+  currenttimeSql(expression: Expression): string {
+    const zone = this.sql(expression, "this");
+    if (zone) return `CURRENT_TIME AT TIME ZONE ${zone}`;
+    return "CURRENT_TIME";
+  }
+
+  currenttimestampSql(expression: Expression): string {
+    const zone = this.sql(expression, "this");
+    if (zone) return `CURRENT_TIMESTAMP AT TIME ZONE ${zone}`;
+    return "CURRENT_TIMESTAMP";
+  }
+
+  currentdatetimeSql(expression: Expression): string {
+    const zone = this.sql(expression, "this");
+    if (zone) return `CURRENT_DATETIME AT TIME ZONE ${zone}`;
+    return "CURRENT_DATETIME";
+  }
+
   // ── WINDOW ────────────────────────────────────────────────────────────
 
   windowSql(expression: Expression): string {

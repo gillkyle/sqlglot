@@ -419,3 +419,206 @@ function parseAndCompare(
 - Run codegen'd tests, fix failures
 - Ensure all P0 tests pass
 - Add browser smoke test (e.g., via vitest browser mode or simple HTML page)
+
+## Gap Analysis: sqlglot-ts vs Python sqlglot
+
+This section tracks the features present in Python sqlglot that are not yet ported to the TypeScript version. It serves as a roadmap for future work.
+
+### Expression Classes
+
+The TS port has ~73 expression classes. Python sqlglot has ~850+, including ~490+ `Func` subclasses. Key gaps:
+
+#### Date/Time Functions (HIGH PRIORITY)
+These are critical for cross-dialect transpilation of date operations.
+
+| Python Class | Status | Notes |
+|---|---|---|
+| `CurrentDate` | **Implemented** | `CURRENT_DATE`, `CURDATE()` |
+| `CurrentTimestamp` | **Implemented** | `CURRENT_TIMESTAMP`, `NOW()` |
+| `CurrentTime` | **Implemented** | `CURRENT_TIME`, `CURTIME()` |
+| `CurrentDatetime` | Not ported | MySQL-specific |
+| `DateAdd` / `DateSub` | Not ported | `DATE_ADD()`, `DATE_SUB()` with interval |
+| `DateDiff` | Not ported | `DATEDIFF()` |
+| `DateTrunc` | Not ported | `DATE_TRUNC()` |
+| `TimestampAdd` / `TimestampSub` | Not ported | |
+| `TimestampDiff` | Not ported | `TIMESTAMPDIFF()` |
+| `TimestampTrunc` | Not ported | |
+| `StrToDate` / `StrToTime` | Not ported | `STR_TO_DATE()`, `TO_TIMESTAMP()` |
+| `TimeToStr` | Not ported | `DATE_FORMAT()`, `TO_CHAR()` |
+| `UnixToTime` / `TimeToUnix` | Not ported | |
+| `DateFromParts` / `TimeFromParts` | Not ported | |
+
+#### String Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `Concat` | **Implemented** | |
+| `Length` | **Implemented** | |
+| `Lower` / `Upper` | **Implemented** | |
+| `Trim` | **Implemented** | |
+| `Substring` | **Implemented** | |
+| `Replace` | **Implemented** | |
+| `Left` / `Right` | Not ported | |
+| `Repeat` | Not ported | |
+| `Reverse` | Not ported | |
+| `StartsWith` / `EndsWith` | Not ported | |
+| `RegexpLike` / `RegexpReplace` / `RegexpExtract` | Not ported | |
+| `Split` / `ArrayJoin` | Not ported | |
+| `Initcap` | Not ported | |
+| `Levenshtein` | Not ported | |
+| `Base64Encode` / `Base64Decode` | Not ported | |
+| `SHA` / `SHA2` / `MD5` | Not ported | |
+
+#### Math Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `Abs` / `Ceil` / `Floor` / `Round` | **Implemented** | |
+| `Exp` / `Ln` / `Log` | Not ported | |
+| `Pow` / `Sqrt` | Not ported | |
+| `Greatest` / `Least` | Not ported | |
+| `Sign` | Not ported | |
+| `Rand` / `Randn` | Not ported | |
+
+#### Aggregate Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `Count` / `Sum` / `Avg` / `Min` / `Max` | **Implemented** | |
+| `ArrayAgg` / `GroupConcat` | Not ported | |
+| `CountIf` / `SumIf` | Not ported | |
+| `ApproxDistinct` / `ApproxQuantile` | Not ported | |
+| `Variance` / `Stddev` | Not ported | |
+| `Percentile` / `Quantile` | Not ported | |
+
+#### Window Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `Window` / `WindowSpec` | **Implemented** | |
+| `RowNumber` / `Rank` / `DenseRank` | Not ported | Parsed as Anonymous |
+| `Lag` / `Lead` | Not ported | Parsed as Anonymous |
+| `FirstValue` / `LastValue` / `NthValue` | Not ported | Parsed as Anonymous |
+| `Ntile` | Not ported | Parsed as Anonymous |
+
+#### JSON Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `JSONExtract` / `JSONExtractScalar` | Not ported | |
+| `JSONObject` / `JSONArray` | Not ported | |
+| `JSONFormat` | Not ported | |
+| `ParseJSON` | Not ported | |
+
+#### Type Conversion
+| Python Class | Status | Notes |
+|---|---|---|
+| `Cast` / `TryCast` | **Implemented** | |
+| `Coalesce` | **Implemented** (FUNCTION_MAP) | |
+| `NullIf` | **Implemented** (FUNCTION_MAP) | |
+| `TsOrDsToDate` | Not ported | Internal transpilation helper |
+| `SafeCast` | Not ported | |
+
+#### Array / Map Functions
+All not ported. Python has ~30+ array/map expression classes.
+
+#### Conditional Functions
+| Python Class | Status | Notes |
+|---|---|---|
+| `Case` / `If` | **Implemented** | |
+| `Ifs` (multi-branch IF) | Not ported | |
+| `NullSafeEQ` / `NullSafeNEQ` | Not ported | |
+
+### Parser Features
+
+The TS parser covers SELECT queries with most modifiers. Major gaps:
+
+| Feature | Status | Notes |
+|---|---|---|
+| SELECT + all modifiers | **Implemented** | FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET |
+| JOINs (all types) | **Implemented** | INNER, LEFT, RIGHT, FULL, CROSS, SEMI, ANTI |
+| CTEs (WITH) | **Implemented** | Including recursive |
+| Subqueries | **Implemented** | In SELECT, FROM, WHERE |
+| Set operations | **Implemented** | UNION, INTERSECT, EXCEPT |
+| Window functions | **Implemented** | OVER (PARTITION BY ... ORDER BY ...) |
+| CASE / WHEN | **Implemented** | |
+| CAST / TRY_CAST | **Implemented** | |
+| EXISTS / IN / BETWEEN | **Implemented** | |
+| EXTRACT | **Implemented** | |
+| INTERVAL | **Implemented** | |
+| No-paren functions | **Implemented** | CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIME |
+| INSERT | Not ported | |
+| UPDATE | Not ported | |
+| DELETE | Not ported | |
+| CREATE TABLE / VIEW | Not ported | |
+| ALTER TABLE | Not ported | |
+| DROP | Not ported | |
+| MERGE | Not ported | |
+| TRUNCATE | Not ported | |
+| COPY | Not ported | |
+| FETCH / NEXT | Not ported | |
+| QUALIFY | Not ported | Token exists but not parsed |
+| PIVOT / UNPIVOT | Not ported | |
+| Window frames | Not ported | ROWS/RANGE BETWEEN |
+| CUBE / ROLLUP / GROUPING SETS | Not ported | |
+| LATERAL | Partial | Token exists, not fully parsed |
+| VALUES as standalone | Partial | Used in set context only |
+| Multiple statements | **Implemented** | Semicolon splitting |
+
+### Dialect Coverage
+
+34 dialects are registered but only MySQL and Postgres have meaningful implementations. All others are stub dialects that register with Dialect but provide no custom Tokenizer, Parser, or Generator.
+
+#### MySQL Dialect Gaps
+Python MySQL dialect has ~150 FUNCTIONS mappings, ~80 TRANSFORMS, and ~50 custom generator methods. The TS port has:
+- Tokenizer: keyword overrides, identifier/quote settings (**done**)
+- Parser: no custom FUNCTIONS mappings (0 of ~150)
+- Generator: only `ilikeSql` override (1 of ~50 custom methods)
+
+Key missing MySQL transforms:
+- `CURDATE()` → `CurrentDate` (parser FUNCTIONS) — **now implemented**
+- `GROUP_CONCAT()` → `GroupConcat` expression
+- `DATE_FORMAT()` → `TimeToStr` expression
+- `STR_TO_DATE()` → `StrToDate` expression
+- `DATE_ADD()` / `DATE_SUB()` with INTERVAL syntax
+- `IFNULL()` → `Coalesce` mapping
+- `TIMESTAMPDIFF()` → `TimestampDiff` expression
+- MySQL-specific type generation (SIGNED, UNSIGNED, etc.)
+
+#### Postgres Dialect Gaps
+Python Postgres dialect has ~60 FUNCTIONS mappings, ~60 TRANSFORMS, and ~40 custom generator methods. The TS port has:
+- Generator: type mapping override (**done**)
+- Parser: no custom FUNCTIONS mappings (0 of ~60)
+
+Key missing Postgres transforms:
+- `NOW()` → `CurrentTimestamp` (parser FUNCTIONS) — **now implemented**
+- `TO_CHAR()` → `TimeToStr` expression
+- `TO_DATE()` / `TO_TIMESTAMP()` → `StrToDate` / `StrToTime`
+- `DATE_TRUNC()` → `TimestampTrunc`
+- Interval arithmetic (`expr + INTERVAL '1 day'`)
+- `::` cast syntax (parser)
+- Array syntax (`ARRAY[1,2,3]`, `array_agg`)
+- `ILIKE` support (inherited from base — **done**)
+- `SERIAL` / `BIGSERIAL` types
+- `RETURNING` clause
+
+#### Other Dialects
+All other 32 dialects (BigQuery, Snowflake, DuckDB, Redshift, ClickHouse, Databricks, etc.) are registered stubs with no custom parsing or generation. They use the base sqlglot tokenizer/parser/generator.
+
+### Optimizer
+
+The entire optimizer subsystem is not ported:
+- `qualify` (identifier qualification)
+- `annotate_types` (type inference)
+- `simplify` (boolean/arithmetic simplification)
+- `pushdown_predicates` / `pushdown_projections`
+- `normalize` / `canonicalize`
+- `merge_subqueries` / `eliminate_subqueries`
+- `unnest_subqueries`
+
+### Other Missing Subsystems
+
+| Subsystem | Status | Notes |
+|---|---|---|
+| Schema (`schema.py`) | Not ported | MappingSchema, etc. |
+| Lineage (`lineage.py`) | Not ported | Column-level lineage tracing |
+| SQL Engine | Not ported | Out of scope |
+| `diff` module | Not ported | AST diff/patch |
+| `planner` module | Not ported | Query planning |
+| `serde` module | Not ported | AST serialization |
+| Format time mapping | Not ported | Cross-dialect date format conversion |

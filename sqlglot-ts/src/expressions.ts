@@ -2094,6 +2094,30 @@ export class Max extends AggFunc {
 }
 
 // ---------------------------------------------------------------------------
+// Date/Time Functions
+// ---------------------------------------------------------------------------
+
+export class CurrentDate extends Func {
+  static override argTypes: Record<string, boolean> = { this: false };
+  static override key = "currentdate";
+}
+
+export class CurrentTime extends Func {
+  static override argTypes: Record<string, boolean> = { this: false };
+  static override key = "currenttime";
+}
+
+export class CurrentTimestamp extends Func {
+  static override argTypes: Record<string, boolean> = { this: false, sysdate: false };
+  static override key = "currenttimestamp";
+}
+
+export class CurrentDatetime extends Func {
+  static override argTypes: Record<string, boolean> = { this: false };
+  static override key = "currentdatetime";
+}
+
+// ---------------------------------------------------------------------------
 // Other Functions
 // ---------------------------------------------------------------------------
 
@@ -2497,6 +2521,10 @@ const _allClasses: Array<typeof Expression> = [
   Avg,
   Min,
   Max,
+  CurrentDate,
+  CurrentTime,
+  CurrentTimestamp,
+  CurrentDatetime,
   Case,
   If,
   Extract,

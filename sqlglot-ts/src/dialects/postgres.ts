@@ -23,8 +23,11 @@ export class PostgresGenerator extends Generator {
    */
   private static TYPE_MAP: Record<string, string> = {
     TINYINT: "SMALLINT",
-    FLOAT: "REAL",
+    FLOAT: "DOUBLE PRECISION",
+    FLOAT4: "REAL",
+    FLOAT8: "DOUBLE PRECISION",
     DOUBLE: "DOUBLE PRECISION",
+    INT8: "BIGINT",
     BINARY: "BYTEA",
     VARBINARY: "BYTEA",
     DATETIME: "TIMESTAMP",
@@ -37,8 +40,16 @@ export class PostgresGenerator extends Generator {
   };
 
   /**
-   * Map data types to Postgres-specific names.
+   * Function name mapping for Postgres-specific function renames.
    */
+  private static FUNCTION_NAME_MAP: Record<string, string> = {
+    CHAR_LENGTH: "LENGTH",
+    CHARACTER_LENGTH: "LENGTH",
+    VARIANCE: "VAR_SAMP",
+    VARIANCE_POP: "VAR_POP",
+    LOGICAL_OR: "BOOL_OR",
+  };
+
   override datatypeSql(expression: Expression): string {
     const typeValue = expression.this_;
     let typeSql: string;
@@ -54,6 +65,19 @@ export class PostgresGenerator extends Generator {
       return `${typeSql}(${interior})`;
     }
     return typeSql;
+  }
+
+  override anonymousSql(expression: Expression): string {
+    const name = expression.this_ as string;
+    const upper = (name || "").toUpperCase();
+    const mapped = PostgresGenerator.FUNCTION_NAME_MAP[upper];
+    if (mapped) {
+      return this.func(mapped, ...(expression.expressions || []));
+    }
+    return this.func(
+      this.sql(expression, "this"),
+      ...(expression.expressions || []),
+    );
   }
 }
 

@@ -118,16 +118,71 @@ export class MySQLParser extends Parser {
 // ---------------------------------------------------------------------------
 
 export class MySQLGenerator extends Generator {
-  // MySQL uses backtick-quoted identifiers. The identifier quoting
-  // is handled by the dialect's IDENTIFIER_START/END settings which
-  // flow through to the Generator via the dialect instance.
+  /**
+   * Type mapping for MySQL-specific type names.
+   * MySQL uses CHAR for most text types in CAST, SIGNED/UNSIGNED for integer types.
+   */
+  private static TYPE_MAP: Record<string, string> = {
+    VARCHAR: "CHAR",
+    TEXT: "CHAR",
+    MEDIUMTEXT: "CHAR",
+    LONGTEXT: "CHAR",
+    TINYTEXT: "CHAR",
+    MEDIUMBLOB: "CHAR",
+    LONGBLOB: "CHAR",
+    TINYBLOB: "CHAR",
+    MEDIUMINT: "SIGNED",
+    "SIGNED INTEGER": "SIGNED",
+    "UNSIGNED INTEGER": "UNSIGNED",
+  };
 
-  // MySQL uses IFNULL instead of standard COALESCE in some contexts,
-  // but we keep COALESCE since MySQL supports it too.
+  /**
+   * Function name mapping for MySQL-specific function renames.
+   * Maps base/generic function names to MySQL equivalents.
+   */
+  private static FUNCTION_NAME_MAP: Record<string, string> = {
+    DATABASE: "SCHEMA",
+    UCASE: "UPPER",
+    LCASE: "LOWER",
+    DAY_OF_MONTH: "DAYOFMONTH",
+    DAY_OF_WEEK: "DAYOFWEEK",
+    DAY_OF_YEAR: "DAYOFYEAR",
+    WEEK_OF_YEAR: "WEEKOFYEAR",
+    CHARACTER_LENGTH: "CHAR_LENGTH",
+  };
 
-  // Override to handle MySQL-specific ILIKE -> LIKE (MySQL has no ILIKE)
+  override datatypeSql(expression: Expression): string {
+    const typeValue = expression.this_;
+    let typeSql: string;
+
+    if (typeof typeValue === "string") {
+      typeSql = MySQLGenerator.TYPE_MAP[typeValue] ?? typeValue;
+    } else {
+      typeSql = String(typeValue ?? "");
+    }
+
+    const interior = this.expressions(expression, { flat: true });
+    if (interior) {
+      return `${typeSql}(${interior})`;
+    }
+    return typeSql;
+  }
+
+  override anonymousSql(expression: Expression): string {
+    const name = expression.this_ as string;
+    const upper = (name || "").toUpperCase();
+    const mapped = MySQLGenerator.FUNCTION_NAME_MAP[upper];
+    if (mapped) {
+      return this.func(mapped, ...(expression.expressions || []));
+    }
+    return this.func(
+      this.sql(expression, "this"),
+      ...(expression.expressions || []),
+    );
+  }
+
+  // MySQL doesn't support ILIKE, generate as LIKE instead
   override ilikeSql(expression: Expression): string {
-    // MySQL doesn't support ILIKE, generate as LIKE instead
     return this.binary(expression, "LIKE");
   }
 }

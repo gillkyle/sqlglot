@@ -78,10 +78,10 @@ describe("MySQL→Postgres: type mappings in CAST", () => {
     );
   });
 
-  it("FLOAT → REAL", () => {
+  it("FLOAT → DOUBLE PRECISION", () => {
     mysqlToPostgres(
       "SELECT CAST(x AS FLOAT)",
-      "SELECT CAST(x AS REAL)",
+      "SELECT CAST(x AS DOUBLE PRECISION)",
     );
   });
 

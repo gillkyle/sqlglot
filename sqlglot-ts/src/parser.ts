@@ -1228,6 +1228,13 @@ export class Parser {
     if (this._match(TokenType.STAR)) {
       return this.expression(exp.Star, {});
     }
+    // No-paren date/time functions: CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP
+    // Only match when next token is NOT ( — if parens follow, let _parseFunction handle it
+    if (this._curr && NO_PAREN_FUNCTIONS[this._curr.tokenType] && this._next?.tokenType !== TokenType.L_PAREN) {
+      const cls = NO_PAREN_FUNCTIONS[this._curr.tokenType]!;
+      this._advance();
+      return this.expression(exp[cls], {});
+    }
     // Parenthesized expression / subquery / tuple
     if (this._match(TokenType.L_PAREN)) {
       return this._parseParen();
@@ -1385,6 +1392,10 @@ const FUNC_TOKENS = new Set<TokenType>([
   TokenType.TINYINT,
   TokenType.DOUBLE,
   TokenType.DECIMAL,
+  TokenType.CURRENT_DATE,
+  TokenType.CURRENT_DATETIME,
+  TokenType.CURRENT_TIME,
+  TokenType.CURRENT_TIMESTAMP,
 ]);
 
 const JOIN_SIDES = new Set<TokenType>([
@@ -1549,6 +1560,14 @@ const ID_VAR_TOKENS = new Set<TokenType>([
   TokenType.ANALYZE,
 ]);
 
+// No-paren functions: tokens that create expressions without requiring parentheses
+const NO_PAREN_FUNCTIONS: Partial<Record<TokenType, string>> = {
+  [TokenType.CURRENT_DATE]: "CurrentDate",
+  [TokenType.CURRENT_DATETIME]: "CurrentDatetime",
+  [TokenType.CURRENT_TIME]: "CurrentTime",
+  [TokenType.CURRENT_TIMESTAMP]: "CurrentTimestamp",
+};
+
 // Known function names -> expression class names
 const FUNCTION_MAP: Record<string, string> = {
   SUM: "Sum",
@@ -1570,6 +1589,13 @@ const FUNCTION_MAP: Record<string, string> = {
   SUBSTRING: "Substring",
   REPLACE: "Replace",
   CONCAT: "Concat",
+  // Date/time functions
+  CURRENT_DATE: "CurrentDate",
+  CURRENT_TIME: "CurrentTime",
+  CURRENT_TIMESTAMP: "CurrentTimestamp",
+  CURDATE: "CurrentDate",
+  CURTIME: "CurrentTime",
+  NOW: "CurrentTimestamp",
 };
 
 const INTERVAL_UNITS = new Set([
