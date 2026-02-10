@@ -7,6 +7,7 @@ interface DialectSelectorProps {
 const DIALECTS = [
   { value: "sqlglot", label: "SQLGlot" },
   { value: "bigquery", label: "BigQuery" },
+  { value: "clickhouse", label: "ClickHouse" },
   { value: "duckdb", label: "DuckDB" },
   { value: "mysql", label: "MySQL" },
   { value: "postgres", label: "PostgreSQL" },

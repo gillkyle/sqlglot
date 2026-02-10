@@ -27,6 +27,10 @@
       "types": "./dist/dialects/redshift.d.ts",
       "import": "./dist/dialects/redshift.js"
     },
+    "./dialects/clickhouse": {
+      "types": "./dist/dialects/clickhouse.d.ts",
+      "import": "./dist/dialects/clickhouse.js"
+    },
     "./dialects/sqlite": {
       "types": "./dist/dialects/sqlite.d.ts",
       "import": "./dist/dialects/sqlite.js"
