@@ -271,6 +271,7 @@ export default function App() {
   const [ast, setAst] = useState<Expression | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [runTrigger, setRunTrigger] = useState(0);
+  const [pgSql, setPgSql] = useState("");
   const [prettyPrint, setPrettyPrint] = useState(true);
   const [activePresetDesc, setActivePresetDesc] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -312,9 +313,6 @@ export default function App() {
   // Auto-transpile when dialects change
   useEffect(() => {
     doTranspile(sqlInput, readDialect, writeDialect);
-    if (writeDialect !== "postgres" && activeTab === "results") {
-      setActiveTab("sql");
-    }
   }, [readDialect, writeDialect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced transpile on SQL input change
@@ -336,9 +334,21 @@ export default function App() {
   }, []);
 
   const handleRun = useCallback(() => {
+    try {
+      const readDial = Dialect.getOrRaise(readDialect);
+      const pgDial = Dialect.getOrRaise("postgres");
+      const parsed = readDial.parse(sqlInput);
+      const pgOutput = parsed
+        .map((expr) => (expr ? pgDial.generate(expr) : ""))
+        .filter((s) => s.length > 0)
+        .join(";\n\n");
+      setPgSql(pgOutput);
+    } catch {
+      setPgSql(sqlInput);
+    }
     setActiveTab("results");
     setRunTrigger((prev) => prev + 1);
-  }, []);
+  }, [readDialect, sqlInput]);
 
   const handlePreset = useCallback(
     (index: number) => {
@@ -398,12 +408,7 @@ export default function App() {
           <button
             className="btn btn-primary"
             onClick={handleRun}
-            disabled={writeDialect !== "postgres"}
-            title={
-              writeDialect !== "postgres"
-                ? "Run requires PostgreSQL as the write dialect (PGlite)"
-                : "Execute query against PGlite"
-            }
+            title="Execute query against PGlite (auto-converts to PostgreSQL)"
           >
             Run
           </button>
@@ -476,14 +481,8 @@ export default function App() {
               AST
             </button>
             <button
-              className={`tab ${activeTab === "results" ? "active" : ""} ${writeDialect !== "postgres" ? "tab-disabled" : ""}`}
+              className={`tab ${activeTab === "results" ? "active" : ""}`}
               onClick={() => setActiveTab("results")}
-              disabled={writeDialect !== "postgres"}
-              title={
-                writeDialect !== "postgres"
-                  ? "Results require PostgreSQL as the write dialect"
-                  : undefined
-              }
             >
               Results
             </button>
@@ -495,7 +494,7 @@ export default function App() {
             {activeTab === "ast" && <AstViewer expression={ast} />}
             {activeTab === "results" && (
               <QueryResults
-                sql={transpiled || sqlInput}
+                sql={pgSql || transpiled || sqlInput}
                 autoRun={runTrigger > 0}
                 key={runTrigger}
               />
