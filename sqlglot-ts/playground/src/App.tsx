@@ -258,6 +258,138 @@ SELECT status AS name, 'order' AS source FROM orders WHERE total > 200
 ORDER BY name
 LIMIT 10`,
   },
+
+  // ── Kitchen Sink ──
+  {
+    label: "Kitchen Sink: Analytics",
+    category: "Kitchen Sink",
+    description: "CTEs, window functions, CASE, aggregates, HAVING, subqueries, COALESCE, UNION — everything",
+    read: "sqlglot",
+    write: "postgres",
+    sql: `WITH monthly_orders AS (
+  SELECT
+    user_id,
+    DATE_TRUNC('month', created_at) AS month,
+    COUNT(*) AS order_count,
+    SUM(total) AS monthly_total,
+    AVG(total) AS avg_order
+  FROM orders
+  WHERE status IN ('completed', 'pending')
+  GROUP BY user_id, DATE_TRUNC('month', created_at)
+  HAVING SUM(total) > 50
+),
+user_stats AS (
+  SELECT
+    u.id,
+    u.name,
+    COALESCE(u.email, 'no email') AS email,
+    COUNT(o.id) AS lifetime_orders,
+    COALESCE(SUM(o.total), 0) AS lifetime_spent,
+    MIN(o.created_at) AS first_order,
+    MAX(o.created_at) AS last_order,
+    SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed,
+    SUM(CASE WHEN o.status = 'cancelled' THEN o.total ELSE 0 END) AS lost_revenue
+  FROM users AS u
+  LEFT JOIN orders AS o ON u.id = o.user_id
+  GROUP BY u.id, u.name, u.email
+),
+ranked AS (
+  SELECT
+    us.*,
+    RANK() OVER (ORDER BY us.lifetime_spent DESC) AS spend_rank,
+    NTILE(3) OVER (ORDER BY us.lifetime_spent DESC) AS spend_tier
+  FROM user_stats AS us
+  WHERE us.lifetime_orders > 0
+)
+SELECT
+  r.name,
+  r.email,
+  r.lifetime_orders,
+  r.lifetime_spent,
+  r.completed,
+  r.lost_revenue,
+  r.spend_rank,
+  CASE r.spend_tier
+    WHEN 1 THEN 'Top'
+    WHEN 2 THEN 'Mid'
+    ELSE 'Low'
+  END AS tier,
+  (
+    SELECT ROUND(AVG(mo.monthly_total), 2)
+    FROM monthly_orders AS mo
+    WHERE mo.user_id = r.id
+  ) AS avg_monthly_spend,
+  r.first_order,
+  r.last_order,
+  r.last_order - r.first_order AS customer_tenure
+FROM ranked AS r
+ORDER BY r.spend_rank ASC, r.name ASC
+LIMIT 20`,
+  },
+  {
+    label: "Kitchen Sink: Cross-Dialect",
+    category: "Kitchen Sink",
+    description: "MySQL → Postgres: backticks, window functions, CASE, CTEs, EXISTS, GROUP BY, HAVING, LIMIT",
+    read: "mysql",
+    write: "postgres",
+    sql: `WITH \`order_summary\` AS (
+  SELECT
+    \`o\`.\`user_id\`,
+    COUNT(*) AS \`cnt\`,
+    SUM(\`o\`.\`total\`) AS \`sum_total\`,
+    MIN(\`o\`.\`total\`) AS \`min_order\`,
+    MAX(\`o\`.\`total\`) AS \`max_order\`,
+    GROUP_CONCAT(DISTINCT \`o\`.\`status\` ORDER BY \`o\`.\`status\` SEPARATOR ', ') AS \`statuses\`
+  FROM \`orders\` AS \`o\`
+  WHERE \`o\`.\`created_at\` >= '2024-01-01'
+    AND \`o\`.\`status\` <> 'cancelled'
+  GROUP BY \`o\`.\`user_id\`
+  HAVING SUM(\`o\`.\`total\`) > 100
+),
+\`ranked_users\` AS (
+  SELECT
+    \`u\`.\`id\`,
+    \`u\`.\`name\`,
+    COALESCE(\`u\`.\`email\`, 'N/A') AS \`email\`,
+    \`os\`.\`cnt\`,
+    \`os\`.\`sum_total\`,
+    \`os\`.\`min_order\`,
+    \`os\`.\`max_order\`,
+    \`os\`.\`statuses\`,
+    ROW_NUMBER() OVER (ORDER BY \`os\`.\`sum_total\` DESC) AS \`rn\`,
+    SUM(\`os\`.\`sum_total\`) OVER () AS \`grand_total\`,
+    ROUND(\`os\`.\`sum_total\` * 100.0 / SUM(\`os\`.\`sum_total\`) OVER (), 2) AS \`pct_of_total\`,
+    LAG(\`os\`.\`sum_total\`) OVER (ORDER BY \`os\`.\`sum_total\` DESC) AS \`prev_total\`,
+    LEAD(\`os\`.\`sum_total\`) OVER (ORDER BY \`os\`.\`sum_total\` DESC) AS \`next_total\`
+  FROM \`users\` AS \`u\`
+  INNER JOIN \`order_summary\` AS \`os\` ON \`u\`.\`id\` = \`os\`.\`user_id\`
+  WHERE EXISTS (
+    SELECT 1 FROM \`orders\` AS \`o2\`
+    WHERE \`o2\`.\`user_id\` = \`u\`.\`id\`
+      AND \`o2\`.\`status\` = 'completed'
+  )
+)
+SELECT
+  \`rn\` AS \`rank\`,
+  \`name\`,
+  \`email\`,
+  \`cnt\` AS \`orders\`,
+  \`sum_total\` AS \`total_spent\`,
+  \`min_order\`,
+  \`max_order\`,
+  \`statuses\`,
+  CASE
+    WHEN \`sum_total\` > 500 THEN 'VIP'
+    WHEN \`sum_total\` > 200 THEN 'Regular'
+    ELSE 'Starter'
+  END AS \`tier\`,
+  \`pct_of_total\`,
+  COALESCE(\`sum_total\` - \`prev_total\`, 0) AS \`gap_from_above\`,
+  \`grand_total\`
+FROM \`ranked_users\`
+ORDER BY \`rn\` ASC
+LIMIT 50`,
+  },
 ];
 
 type Tab = "sql" | "ast" | "results";
