@@ -4,6 +4,9 @@ interface DialectSelectorProps {
   onChange: (value: string) => void;
 }
 
+// Dialects where all active tests pass (zero failures)
+const FULLY_SUPPORTED = new Set(["sqlglot", "mysql", "postgres", "athena", "spark2", "drill"]);
+
 const DIALECTS = [
   { value: "sqlglot", label: "SQLGlot" },
   { value: "athena", label: "Athena" },
@@ -47,7 +50,7 @@ export default function DialectSelector({ label, value, onChange }: DialectSelec
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         {DIALECTS.map((d) => (
           <option key={d.value} value={d.value}>
-            {d.label}
+            {FULLY_SUPPORTED.has(d.value) ? d.label : `${d.label} \u{1F7E1}`}
           </option>
         ))}
       </select>
