@@ -777,17 +777,17 @@ describe("Mysql: explain", () => {
 });
 
 describe("Mysql: number_format", () => {
-  it.todo("mysql -> duckdb: SELECT FORMAT(12332.123456, 4) (cross-dialect transform)");
+  it.todo("mysql -> duckdb: SELECT FORMAT(12332.123456, 4) (unsupported syntax)");
   it("mysql -> mysql: SELECT FORMAT(12332.123456, 4)", () => {
     const result = transpile("SELECT FORMAT(12332.123456, 4)", { readDialect: DIALECT, writeDialect: "mysql" })[0];
     expect(result).toBe("SELECT FORMAT(12332.123456, 4)");
   });
-  it.todo("mysql -> duckdb: SELECT FORMAT(12332.1, 4) (cross-dialect transform)");
+  it.todo("mysql -> duckdb: SELECT FORMAT(12332.1, 4) (unsupported syntax)");
   it("mysql -> mysql: SELECT FORMAT(12332.1, 4)", () => {
     const result = transpile("SELECT FORMAT(12332.1, 4)", { readDialect: DIALECT, writeDialect: "mysql" })[0];
     expect(result).toBe("SELECT FORMAT(12332.1, 4)");
   });
-  it.todo("mysql -> duckdb: SELECT FORMAT(12332.2, 0) (cross-dialect transform)");
+  it.todo("mysql -> duckdb: SELECT FORMAT(12332.2, 0) (unsupported syntax)");
   it("mysql -> mysql: SELECT FORMAT(12332.2, 0)", () => {
     const result = transpile("SELECT FORMAT(12332.2, 0)", { readDialect: DIALECT, writeDialect: "mysql" })[0];
     expect(result).toBe("SELECT FORMAT(12332.2, 0)");

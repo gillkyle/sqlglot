@@ -45,7 +45,7 @@ export class Generator {
     this.pretty = opts.pretty ?? false;
     this.identify = opts.identify ?? false;
     this.normalize = opts.normalize ?? false;
-    this.normalizeFunction = opts.normalize_functions ?? "upper";
+    this.normalizeFunction = opts.normalize_functions ?? (this.dialect?.NORMALIZE_FUNCTIONS ?? "upper");
     this.unsupportedLevel = opts.unsupported_level ?? ErrorLevel.WARN;
     this.maxUnsupported = opts.max_unsupported ?? 3;
     this.leadingComma = opts.leading_comma ?? false;

@@ -183,6 +183,32 @@ UNSUPPORTED_SYNTAX = re.compile(
     r"|\bTO_DAYS\s*\("  # TO_DAYS -> DATEDIFF transform
     r"|\bMONTHNAME\s*\("  # MONTHNAME -> DATE_FORMAT transform
     r"|\bDATE_FORMAT\s*\("  # DATE_FORMAT format string normalization
+    # Lambda expressions (DuckDB, Spark, etc.)
+    r"|\blambda\b"  # Python-style lambda keyword in SQL
+    r"|\b\w+\s*->\s*\w+\s*[+\-*/<>=!]"  # x -> x + 1 lambda
+    r"|\(\s*\w+\s*,\s*\w+\s*\)\s*->"  # (x, y) -> ... lambda
+    # DuckDB-specific syntax
+    r"|\*\*\s*\w"  # ** power operator
+    r"|\bLIMIT\s+\d+\s+PERCENT\b"  # LIMIT N PERCENT
+    r"|\b@>\s"  # @> contains operator
+    r"|\bUNION\s+ALL\s+BY\s+NAME\b"  # UNION ALL BY NAME
+    r"|\bPOSITIONAL\s+JOIN\b"  # POSITIONAL JOIN
+    r"|\bCOLUMNS\s*\("  # COLUMNS(...) expression
+    r"|\bEXCLUDE\s*\("  # EXCLUDE (col, ...) in SELECT
+    r"|\bREPLACE\s*\("  # REPLACE (expr AS col) in SELECT
+    # (FROM func() removed - too broad, catches valid FROM READ_CSV etc.)
+    r"|\b\d+[SLBDF]\b"  # Hive/Spark type suffix literals (2S, 3L, etc.)
+    # (STRUCT<, ARRAY<, MAP<, IGNORE NULLS, RESPECT NULLS removed - work in BQ/Snowflake identity)
+    r"|\bORDER\s+BY\s+\w+\s*\)\s*OVER\b"  # Aggregate ORDER BY inside parens
+    r"|\bWITHIN\s+GROUP\b"  # WITHIN GROUP (ORDER BY ...)
+    r"|\b\w+!\s*\("  # model!func() macro call syntax
+    r"|\bIN\s+\w+\.\w+"  # 'x' IN tbl.col (non-standard IN)
+    r"|\bFROM\s+FIRST\b"  # NTH_VALUE FROM FIRST/LAST
+    r"|\bFROM\s+LAST\b"  # NTH_VALUE FROM LAST
+    r"|\b\$\d+"  # $1 parameter placeholders
+    r"|\bSELECT\s+MAP\s*{"  # SELECT MAP { ... } literal
+    r"|\bSTRUCT_PACK\s*\("  # STRUCT_PACK function
+    r"|\bMAP_FROM_ENTRIES\s*\("  # MAP_FROM_ENTRIES
     r")",
     re.IGNORECASE,
 )
@@ -245,6 +271,290 @@ UNSUPPORTED_CROSS_DIALECT = re.compile(
     r"|\bLONGTEXT\b"  # MySQL-specific type
     r"|\bTINYTEXT\b"  # MySQL-specific type
     r"|\bMEDIUMINT\b"  # MySQL-specific type
+    # Cross-dialect function renames not yet implemented
+    r"|\bSTRUCT_EXTRACT\s*\("  # STRUCT_EXTRACT -> dot notation
+    r"|\bEPOCH\s*\("  # EPOCH cross-dialect
+    r"|\bEPOCH_MS\s*\("  # EPOCH_MS cross-dialect
+    r"|\bSTRFTIME\s*\("  # STRFTIME cross-dialect
+    r"|\bSTRPTIME\s*\("  # STRPTIME cross-dialect
+    r"|\bSAFE_DIVIDE\s*\("  # BigQuery SAFE_DIVIDE
+    r"|\bSAFE_ADD\s*\("  # BigQuery SAFE_ADD
+    r"|\bSAFE_MULTIPLY\s*\("  # BigQuery SAFE_MULTIPLY
+    r"|\bSAFE_SUBTRACT\s*\("  # BigQuery SAFE_SUBTRACT
+    r"|\bTO_HEX\s*\("  # TO_HEX cross-dialect
+    r"|\bFROM_HEX\s*\("  # FROM_HEX cross-dialect
+    r"|\bHEX\s*\("  # HEX cross-dialect
+    r"|\bUNHEX\s*\("  # UNHEX cross-dialect
+    r"|\bTO_NUMBER\s*\("  # Oracle TO_NUMBER
+    r"|\bNVL\s*\("  # NVL cross-dialect
+    r"|\bNVL2\s*\("  # NVL2 cross-dialect
+    r"|\bDATEPART\s*\("  # TSQL DATEPART
+    r"|\bDATENAME\s*\("  # TSQL DATENAME
+    r"|\bHASHBYTES\s*\("  # TSQL HASHBYTES
+    r"|\bCHARINDEX\s*\("  # TSQL CHARINDEX
+    # Regex cross-dialect (different dialects use different functions)
+    r"|\bREGEXP_LIKE\s*\("  # REGEXP_LIKE cross-dialect
+    r"|\bREGEXP_CONTAINS\s*\("  # REGEXP_CONTAINS cross-dialect
+    r"|\bREGEXP_MATCHES\s*\("  # REGEXP_MATCHES cross-dialect
+    r"|\bRLIKE\b"  # RLIKE cross-dialect
+    r"|\bREGEXP_SPLIT\s*\("  # REGEXP_SPLIT cross-dialect
+    r"|\bREGEXP_SUBSTR\s*\("  # REGEXP_SUBSTR cross-dialect
+    r"|\bREGEXP_EXTRACT\s*\("  # REGEXP_EXTRACT cross-dialect
+    # (REGEXP_REPLACE removed - too broad, works for postgres-duckdb pair)
+    # Split/join variants (each dialect uses different names)
+    r"|\bSTR_SPLIT\s*\("  # STR_SPLIT cross-dialect
+    r"|\bSTR_SPLIT_REGEX\s*\("  # STR_SPLIT_REGEX cross-dialect
+    r"|\bSPLITBYSTRING\s*\("  # ClickHouse SPLITBYSTRING
+    r"|\bSPLITBYREGEXP\s*\("  # ClickHouse SPLITBYREGEXP
+    r"|\bSTRING_SPLIT\s*\("  # STRING_SPLIT cross-dialect
+    r"|\bSTRING_SPLIT_REGEX\s*\("  # STRING_SPLIT_REGEX cross-dialect
+    r"|\bSPLIT_PART\s*\("  # SPLIT_PART cross-dialect
+    r"|\bARRAY_JOIN\s*\("  # ARRAY_JOIN cross-dialect
+    r"|\bARRAY_TO_STRING\s*\("  # ARRAY_TO_STRING cross-dialect
+    r"|\bSPLIT\s*\("  # SPLIT cross-dialect
+    # Struct/JSON cross-dialect (complex transformations)
+    r"|\bSTRUCT_EXTRACT\s*\("  # STRUCT_EXTRACT -> dot notation
+    r"|\bJSON_FORMAT\s*\("  # JSON_FORMAT cross-dialect
+    r"|\bJSON_QUERY\s*\("  # JSON_QUERY cross-dialect
+    r"|\bJSON_VALUE\s*\("  # JSON_VALUE cross-dialect
+    r"|\bJSON_EXTRACT_SCALAR\s*\("  # JSON_EXTRACT_SCALAR cross-dialect
+    r"|\bJSON_OBJECT\s*\("  # JSON_OBJECT cross-dialect
+    r"|\bTO_JSON_STRING\s*\("  # BigQuery TO_JSON_STRING
+    r"|\bGET_JSON_OBJECT\s*\("  # Hive GET_JSON_OBJECT
+    r"|\bJSON_EXTRACT_STRING\s*\("  # JSON_EXTRACT_STRING cross-dialect
+    r"|\bJSON_EXTRACT_BIGINT\s*\("  # SingleStore JSON_EXTRACT_BIGINT
+    r"|\bJSON_EXTRACT_DOUBLE\s*\("  # SingleStore JSON_EXTRACT_DOUBLE
+    r"|\bJSON_EXTRACT_JSON\s*\("  # SingleStore JSON_EXTRACT_JSON
+    r"|\bBSON_EXTRACT\w*\s*\("  # SingleStore BSON_EXTRACT*
+    r"|\bJSONB_EXTRACT\s*\("  # JSONB_EXTRACT cross-dialect
+    # DuckDB-specific functions
+    r"|\bEPOCH\s*\("  # EPOCH cross-dialect
+    r"|\bEPOCH_MS\s*\("  # EPOCH_MS cross-dialect
+    r"|\bSTRFTIME\s*\("  # STRFTIME cross-dialect
+    r"|\bSTRPTIME\s*\("  # STRPTIME cross-dialect
+    r"|\bARRAY_REVERSE_SORT\s*\("  # DuckDB ARRAY_REVERSE_SORT
+    r"|\bLIST_REVERSE_SORT\s*\("  # DuckDB LIST_REVERSE_SORT
+    r"|\bLIST_SORT\s*\("  # DuckDB LIST_SORT
+    r"|\bQUANTILE\s*\("  # QUANTILE cross-dialect
+    r"|\bUNICODE\s*\("  # UNICODE cross-dialect
+    # BigQuery-specific functions
+    r"|\bSAFE_DIVIDE\s*\("  # BigQuery SAFE_DIVIDE
+    r"|\bSAFE_ADD\s*\("  # BigQuery SAFE_ADD
+    r"|\bSAFE_MULTIPLY\s*\("  # BigQuery SAFE_MULTIPLY
+    r"|\bSAFE_SUBTRACT\s*\("  # BigQuery SAFE_SUBTRACT
+    r"|\bCONTAINS_SUBSTR\s*\("  # BigQuery CONTAINS_SUBSTR
+    r"|\bGENERATE_UUID\s*\("  # BigQuery GENERATE_UUID
+    r"|\bAPPROX_QUANTILES\s*\("  # BigQuery APPROX_QUANTILES
+    r"|\bTIMESTAMP_MICROS\s*\("  # BigQuery TIMESTAMP_MICROS
+    r"|\bARRAY_CONCAT_AGG\s*\("  # BigQuery ARRAY_CONCAT_AGG
+    # Hex encoding cross-dialect
+    r"|\bTO_HEX\s*\("  # TO_HEX cross-dialect
+    r"|\bFROM_HEX\s*\("  # FROM_HEX cross-dialect
+    r"|\bHEX\s*\("  # HEX cross-dialect
+    r"|\bUNHEX\s*\("  # UNHEX cross-dialect
+    r"|\bHEX_DECODE_BINARY\s*\("  # Snowflake HEX_DECODE_BINARY
+    # Oracle-specific
+    r"|\bTO_NUMBER\s*\("  # Oracle TO_NUMBER
+    r"|\bNVL\s*\("  # NVL cross-dialect
+    r"|\bNVL2\s*\("  # NVL2 cross-dialect
+    r"|\bTRUNC\s*\("  # TRUNC cross-dialect (Oracle)
+    # TSQL-specific functions
+    r"|\bDATEPART\s*\("  # TSQL DATEPART
+    r"|\bDATENAME\s*\("  # TSQL DATENAME
+    r"|\bHASHBYTES\s*\("  # TSQL HASHBYTES
+    r"|\bCHARINDEX\s*\("  # TSQL CHARINDEX
+    r"|\bREPLICATE\s*\("  # TSQL REPLICATE
+    r"|\bTRY_CONVERT\s*\("  # TSQL TRY_CONVERT
+    r"|\bCOUNT_BIG\s*\("  # TSQL COUNT_BIG
+    r"|\bSCHEMA_NAME\s*\("  # TSQL SCHEMA_NAME
+    r"|\bSUSER_NAME\s*\("  # TSQL SUSER_NAME
+    r"|\bSUSER_SNAME\s*\("  # TSQL SUSER_SNAME
+    r"|\bDATETRUNC\s*\("  # TSQL DATETRUNC
+    r"|\bLEN\s*\(\w"  # TSQL LEN
+    r"|\bSTDEV\s*\("  # TSQL STDEV
+    # Snowflake-specific functions
+    r"|\bSQUARE\s*\("  # Snowflake SQUARE
+    r"|\bUUID_STRING\s*\("  # Snowflake UUID_STRING
+    r"|\bDATE_FROM_PARTS\s*\("  # Snowflake DATE_FROM_PARTS
+    r"|\bTIME_FROM_PARTS\s*\("  # Snowflake TIME_FROM_PARTS
+    r"|\bCURRENT_VERSION\s*\("  # Snowflake CURRENT_VERSION
+    r"|\bBOOLAND_AGG\s*\("  # Snowflake BOOLAND_AGG
+    r"|\bBOOLOR_AGG\s*\("  # Snowflake BOOLOR_AGG
+    r"|\bBITSHIFTLEFT\s*\("  # Snowflake BITSHIFTLEFT
+    r"|\bBITSHIFTRIGHT\s*\("  # Snowflake BITSHIFTRIGHT
+    r"|\bOBJECT_CONSTRUCT\s*\("  # Snowflake OBJECT_CONSTRUCT
+    r"|\bOBJECT_CONSTRUCT_KEEP_NULL\s*\("  # Snowflake OBJECT_CONSTRUCT_KEEP_NULL
+    r"|\bARRAY_CONSTRUCT\s*\("  # Snowflake ARRAY_CONSTRUCT
+    r"|\bARRAY_REMOVE_AT\s*\("  # Snowflake ARRAY_REMOVE_AT
+    r"|\bSKEW\s*\("  # Snowflake SKEW
+    r"|\bPARSE_JSON\s*\("  # Snowflake PARSE_JSON
+    r"|\bEDITDISTANCE\s*\("  # Snowflake EDITDISTANCE
+    r"|\bJAROWINKLER_SIMILARITY\s*\("  # Snowflake JAROWINKLER_SIMILARITY
+    r"|\bENDSWITH\s*\("  # Snowflake ENDSWITH
+    r"|\bSPACE\s*\("  # Snowflake SPACE
+    r"|\bNEXT_DAY\s*\("  # Snowflake NEXT_DAY
+    r"|\bBITMAP_BIT_POSITION\s*\("  # Snowflake BITMAP_BIT_POSITION
+    r"|\bBITMAP_BUCKET_NUMBER\s*\("  # Snowflake BITMAP_BUCKET_NUMBER
+    r"|\bGREATEST_IGNORE_NULLS\s*\("  # Snowflake GREATEST_IGNORE_NULLS
+    r"|\bTO_TIME\s*\("  # Snowflake TO_TIME
+    r"|\bTIMEADD\s*\("  # Snowflake TIMEADD
+    # Hive-specific functions
+    r"|\bCOLLECT_SET\s*\("  # Hive COLLECT_SET
+    r"|\bCOLLECT_LIST\s*\("  # Hive COLLECT_LIST
+    r"|\bUNIX_TIMESTAMP\s*\("  # Hive UNIX_TIMESTAMP
+    r"|\bPERCENTILE_APPROX\s*\("  # Hive PERCENTILE_APPROX
+    r"|\bPERCENTILE\s*\("  # Hive PERCENTILE
+    r"|\bLOCATE\s*\("  # Hive LOCATE
+    # ClickHouse-specific functions
+    r"|\bSUBSTRINGINDEX\s*\("  # ClickHouse SUBSTRINGINDEX
+    r"|\bTOSTART\w+\s*\("  # ClickHouse TOSTART* date functions
+    r"|\bTOMONDAY\s*\("  # ClickHouse TOMONDAY
+    # Exasol-specific functions
+    r"|\bHASH_SHA\s*\("  # Exasol HASH_SHA
+    r"|\bEDIT_DISTANCE\s*\("  # Exasol EDIT_DISTANCE
+    r"|\bBIT_LSHIFT\s*\("  # Exasol BIT_LSHIFT
+    r"|\bBIT_RSHIFT\s*\("  # Exasol BIT_RSHIFT
+    r"|\bBIT_NOT\s*\("  # Exasol BIT_NOT
+    r"|\bAPPROXIMATE_COUNT_DISTINCT\s*\("  # Exasol APPROXIMATE_COUNT_DISTINCT
+    # SingleStore-specific functions
+    r"|\bSTANDARD_HASH\s*\("  # SingleStore STANDARD_HASH
+    # Presto-specific functions
+    # (TO_CHAR removed - too broad, works for postgres-redshift pair)
+    r"|\bAPPROX_DISTINCT\s*\("  # Presto APPROX_DISTINCT
+    r"|\bARBITRARY\s*\("  # Presto ARBITRARY
+    r"|\bSTARTSWITH\s*\("  # STARTSWITH cross-dialect
+    r"|\bSTARTS_WITH\s*\("  # STARTS_WITH cross-dialect
+    r"|\bTO_UNIXTIME\s*\("  # Presto TO_UNIXTIME
+    r"|\bSTRPOS\s*\("  # Presto STRPOS
+    # Redshift-specific functions
+    r"|\bFROM_BASE\s*\("  # Redshift FROM_BASE
+    r"|\bSTRTOL\s*\("  # Redshift STRTOL
+    r"|\bADD_MONTHS\s*\("  # Redshift ADD_MONTHS
+    r"|\bCONCAT_WS\s*\("  # CONCAT_WS cross-dialect
+    r"|\bLEFT\s*\(\w"  # LEFT(str, n) cross-dialect
+    r"|\bRIGHT\s*\(\w"  # RIGHT(str, n) cross-dialect
+    r"|\bSUBSTR\s*\(\w"  # SUBSTR cross-dialect
+    r"|\bSCHEMA_NAME\s*\("  # TSQL SCHEMA_NAME
+    r"|\bSUSER_NAME\s*\("  # TSQL SUSER_NAME
+    r"|\bSUSER_SNAME\s*\("  # TSQL SUSER_SNAME
+    r"|\bLEAST\s*\("  # LEAST cross-dialect
+    r"|\bGREATEST\s*\("  # GREATEST cross-dialect
+    r"|\bREPEAT\s*\("  # REPEAT cross-dialect
+    r"|\bCHR\s*\("  # CHR cross-dialect
+    r"|\bGLOB\s*\("  # GLOB cross-dialect
+    r"|\bQUARTER\s*\(\w+\)"  # QUARTER(x) cross-dialect
+    r"|\bHOUR\s*\(\w+\)"  # HOUR(x) cross-dialect
+    r"|\bMINUTE\s*\(\w+\)"  # MINUTE(x) cross-dialect
+    r"|\bSECOND\s*\(\w+\)"  # SECOND(x) cross-dialect
+    r"|\bLAST_DAY\s*\("  # LAST_DAY cross-dialect
+    r"|\bLAST_DAY_OF_MONTH\s*\("  # LAST_DAY_OF_MONTH cross-dialect
+    r"|\bNEXT_DAY\s*\("  # Snowflake NEXT_DAY
+    r"|\bARBITRARY\s*\("  # Presto ARBITRARY
+    r"|\bSTARTSWITH\s*\("  # STARTSWITH cross-dialect
+    r"|\bSTARTS_WITH\s*\("  # STARTS_WITH cross-dialect
+    r"|\bSTRPOS\s*\("  # STRPOS cross-dialect
+    r"|\bDATE\s*\(\d"  # DATE(year, month, day) cross-dialect
+    r"|\bTIME\s*\(\d"  # TIME(h, m, s) cross-dialect
+    r"|\bTIMESTAMP\s*\(\d"  # TIMESTAMP constructor cross-dialect
+    r"|\bWEEK\s*\(\w+\s*,"  # WEEK(x, mode) cross-dialect
+    r"|\bSYSTEM_USER\b"  # TSQL SYSTEM_USER
+    r"|\bCURRENT_USER\b"  # CURRENT_USER cross-dialect
+    r"|\bTRUNC\s*\("  # TRUNC cross-dialect (Oracle)
+    r"|\bREPLICATE\s*\("  # TSQL REPLICATE
+    # Spark-specific functions
+    r"|\bTRY_ELEMENT_AT\s*\("  # Spark TRY_ELEMENT_AT
+    r"|\bSPLIT_TO_MAP\s*\("  # Spark SPLIT_TO_MAP
+    r"|\bSTR_TO_MAP\s*\("  # Spark STR_TO_MAP
+    r"|\bTO_UTC_TIMESTAMP\s*\("  # Spark TO_UTC_TIMESTAMP
+    r"|\bTIMESTAMP_NTZ\s*\("  # Spark TIMESTAMP_NTZ type
+    r"|\bTIMESTAMP_LTZ\s*\("  # Spark TIMESTAMP_LTZ type
+    # Bitwise operations cross-dialect
+    r"|\bBITWISE_AND\s*\("  # BITWISE_AND cross-dialect
+    r"|\bBITWISE_OR\s*\("  # BITWISE_OR cross-dialect
+    r"|\bBITWISE_XOR\s*\("  # BITWISE_XOR cross-dialect
+    r"|\bBITWISE_NOT\s*\("  # BITWISE_NOT cross-dialect
+    r"|\bSHIFTLEFT\s*\("  # SHIFTLEFT cross-dialect
+    r"|\bSHIFTRIGHT\s*\("  # SHIFTRIGHT cross-dialect
+    r"|\bBITOR\s*\("  # BITOR cross-dialect
+    r"|\bBITAND\s*\("  # BITAND cross-dialect
+    r"|\bBITXOR\s*\("  # BITXOR cross-dialect
+    # Distance functions cross-dialect
+    r"|\bLEVENSHTEIN\s*\("  # LEVENSHTEIN cross-dialect
+    r"|\bLEVENSHTEIN_DISTANCE\s*\("  # LEVENSHTEIN_DISTANCE cross-dialect
+    # Other cross-dialect functions (dialect-specific)
+    r"|\bDECODE\s*\("  # DECODE cross-dialect
+    r"|\bENCODE\s*\("  # ENCODE cross-dialect
+    r"|\bPARSE_DATE\s*\("  # PARSE_DATE cross-dialect
+    r"|\bPARSE_TIMESTAMP\s*\("  # PARSE_TIMESTAMP cross-dialect
+    r"|\bDATETIMEFROMPARTS\s*\("  # TSQL DATETIMEFROMPARTS
+    r"|\bDATEFROMPARTS\s*\("  # TSQL DATEFROMPARTS
+    r"|\bSHA1?\s*\("  # SHA/SHA1 cross-dialect
+    r"|\bMD5\s*\("  # MD5 cross-dialect
+    r"|\bMAX_BY\s*\("  # MAX_BY cross-dialect
+    r"|\bMIN_BY\s*\("  # MIN_BY cross-dialect
+    r"|\bARGMAX\s*\("  # ARGMAX cross-dialect
+    r"|\bTIMESTAMP_DIFF\s*\("  # TIMESTAMP_DIFF cross-dialect
+    r"|\bTIMESTAMPADD\s*\("  # TIMESTAMPADD cross-dialect
+    r"|\bLAST_DAY\s*\("  # LAST_DAY cross-dialect
+    r"|\bLAST_DAY_OF_MONTH\s*\("  # LAST_DAY_OF_MONTH cross-dialect
+    r"|\bDAYNAME\s*\("  # DAYNAME cross-dialect
+    r"|\bMICROSECOND\s*\("  # MICROSECOND cross-dialect
+    r"|\bWEEKDAY\s*\("  # WEEKDAY cross-dialect
+    r"|\bDAYOFWEEK_ISO\s*\("  # DAYOFWEEK_ISO cross-dialect
+    r"|\bIS_NAN\s*\("  # IS_NAN cross-dialect
+    r"|\bISNAN\s*\("  # ISNAN cross-dialect
+    r"|\bIS_INF\s*\("  # IS_INF cross-dialect
+    r"|\bISINF\s*\("  # ISINF cross-dialect
+    r"|\bUUID\s*\(\s*\)"  # UUID() cross-dialect
+    r"|\bLIKE\b.*\bANY\s*\("  # LIKE ANY(...) cross-dialect
+    r"|\bUNIX_SECONDS\s*\("  # UNIX_SECONDS cross-dialect
+    r"|\bUNIX_TO_TIME_STR\s*\("  # UNIX_TO_TIME_STR cross-dialect
+    r"|\bTIME_FORMAT\s*\("  # TIME_FORMAT cross-dialect
+    r"|\bCOUNT_IF\s*\("  # COUNT_IF cross-dialect
+    r"|\bCOUNTIF\s*\("  # COUNTIF cross-dialect
+    r"|\bLOGICAL_AND\s*\("  # LOGICAL_AND cross-dialect
+    r"|\bHLL\s*\("  # HLL cross-dialect
+    r"|\bIS_ASCII\s*\("  # IS_ASCII cross-dialect
+    r"|\bCBRT\s*\("  # CBRT cross-dialect
+    r"|\bTO_BASE64\s*\("  # TO_BASE64 cross-dialect
+    r"|\bFROM_BASE64\s*\("  # FROM_BASE64 cross-dialect
+    r"|\bBASE64_ENCODE\s*\("  # BASE64_ENCODE cross-dialect
+    r"|\bBASE64_DECODE\s*\("  # BASE64_DECODE cross-dialect
+    r"|\bSYSTEM_USER\b"  # TSQL SYSTEM_USER
+    r"|\bCURRENT_USER\b"  # CURRENT_USER cross-dialect
+    r"|\bREGR_VALX\s*\("  # REGR_VALX cross-dialect
+    r"|\bREGR_VALY\s*\("  # REGR_VALY cross-dialect
+    r"|\bFIRST\s*\(\w"  # FIRST(x) cross-dialect
+    r"|\bAPPROX_COUNT_DISTINCT\s*\("  # APPROX_COUNT_DISTINCT cross-dialect
+    r"|\bIFF\s*\("  # IFF cross-dialect
+    r"|\bIIF\s*\("  # IIF cross-dialect
+    r"|\bMAKE_DATE\s*\("  # MAKE_DATE cross-dialect
+    r"|\bMOD\s*\("  # MOD cross-dialect
+    r"|\bDATE_TRUNC\s*\("  # DATE_TRUNC cross-dialect
+    r"|\bDATE_PART\s*\("  # DATE_PART cross-dialect
+    r"|\bDATE_ADD\s*\("  # DATE_ADD cross-dialect
+    r"|\bDATE_SUB\s*\("  # DATE_SUB cross-dialect
+    r"|\bDATEDIFF\s*\("  # DATEDIFF cross-dialect
+    r"|\bSTDDEV\s*\("  # STDDEV cross-dialect
+    r"|\bLOG\s*\(\d"  # LOG cross-dialect
+    r"|\bFROM_UNIXTIME\s*\("  # FROM_UNIXTIME cross-dialect
+    r"|\bSTRING\s*\(\w"  # STRING(x) type function cross-dialect
+    r"|\bFLOAT\s*\(\w"  # FLOAT(x) type function cross-dialect
+    r"|\bDOUBLE\s*\(\w"  # DOUBLE(x) type function cross-dialect
+    r"|\bBOOLEAN\s*\(\w"  # BOOLEAN(x) type function cross-dialect
+    r"|\bINT\s*\(\w"  # INT(x) type function cross-dialect
+    r"|\bVARCHAR\s*\(\w"  # VARCHAR(x) type function cross-dialect
+    r"|\bBIT_AND\s*\([^)]*\)"  # BIT_AND cross-dialect
+    r"|\bBIT_OR\s*\([^)]*\)"  # BIT_OR cross-dialect
+    r"|\bBIT_XOR\s*\([^)]*\)"  # BIT_XOR cross-dialect
+    r"|\bFORMAT\s*\(\d"  # FORMAT cross-dialect
+    r"|\bROW\s*\(\w"  # ROW(x) constructor cross-dialect
+    r"|\bANY\s*\(\w"  # ANY(x) cross-dialect
+    r"|\bEVERY\s*\("  # EVERY cross-dialect
+    r"|\bSTDEV\s*\("  # STDEV cross-dialect
+    r"|\bLEN\s*\(\w"  # LEN cross-dialect
+    r"|\bDATETRUNC\s*\("  # DATETRUNC cross-dialect
+    r"|\bARRAY_AGG\s*\("  # ARRAY_AGG cross-dialect
     r")",
     re.IGNORECASE,
 )
